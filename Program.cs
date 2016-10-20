@@ -14,16 +14,18 @@ namespace Compiler
 
             //string s = Console.ReadLine();
 
-            string s = "12+(2.3-43.)*9/8";
+            string s = "12+(2.3-43.)*9/8;";
+            //string s = "(1)3;";
             lex.Accept(s);
-            Token tok;
-            while((tok = lex.GetNextToken()) != null)
-            {
-                string name = Enum.GetName(typeof(TokenType), tok.Type);
-                Console.WriteLine("{0}\t{1}", name, tok.value);
-            }
+            //Token tok;
+            //while((tok = lex.GetNextToken()) != null)
+            //{
+            //    string name = Enum.GetName(typeof(TokenType), tok.Type);
+            //    Console.WriteLine("{0}\t{1}", name, tok.value);
+            //}
 
-            int a = 2-3;
+            LLPaser paser = new LLPaser();
+            paser.Parse(lex);
 
             //lex.Accept(s);
 

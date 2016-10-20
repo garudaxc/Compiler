@@ -14,7 +14,9 @@ namespace Compiler
         Div,
         Number,
         LParenthesis,
-        RParenthesis
+        RParenthesis,
+        Semicolon,
+        End
     }
 
     class Token
@@ -42,12 +44,22 @@ namespace Compiler
             get;
         }
 
+        public string TypeName
+        {
+            get
+            {
+                return Enum.GetName(typeof(TokenType), Type);
+            }
+        }
+
         public static Token Add = new Token(TokenType.Add);
         public static Token Minus = new Token(TokenType.Minus);
         public static Token Multipy = new Token(TokenType.Multiply);
         public static Token Div = new Token(TokenType.Div);
         public static Token LParenthesis = new Token(TokenType.LParenthesis);
         public static Token RParenthesis = new Token(TokenType.RParenthesis);
+        public static Token Semicolon = new Token(TokenType.Semicolon);
+        public static Token End = new Token(TokenType.End);
     }
 
 
@@ -101,13 +113,13 @@ namespace Compiler
         {
             if (cntString_ == strings_.Length)
             {
-                return null;
+                return Token.End;
             }
 
             string s = strings_[cntString_];
 
             int j = 0;
-            Token tok = null;
+            Token tok = Token.End;
             while (true)
             {
                 if (s[cntChar_] == '+')
@@ -155,6 +167,12 @@ namespace Compiler
                     cntChar_++;
                     break;
                 }
+                else if (s[cntChar_] == ';')
+                {
+                    tok = Token.Semicolon;
+                    cntChar_++;
+                    break;
+                }
                 else if (IsNumber(s, cntChar_, out j))
                 {
                     tok = new Token(TokenType.Number);
@@ -165,7 +183,7 @@ namespace Compiler
                 else
                 {
                     Console.WriteLine("not valid token " + s);
-                    return null;
+                    return Token.End;
                 }
 
             }
