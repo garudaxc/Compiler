@@ -34,49 +34,52 @@ namespace Compiler
 
         float E()
         {
-            T(); EPrime(); Eat(TokenType.Semicolon);
-            return 0.0f;
+            float a = T(); a = EPrime(a); Eat(TokenType.Semicolon);
+            return a;
         }
 
-        float EPrime()
+        float EPrime(float a)
         {
+            float b;
             switch(currentToken_.Type)
             {
                 case TokenType.Add:
-                    Eat(TokenType.Add); T(); EPrime();
-                    break;
+                    Eat(TokenType.Add); 
+                    b = T(); 
+                    return EPrime(a + b);
                 case TokenType.Minus:
-                    Eat(TokenType.Minus); T(); EPrime();
-                    break;
+                    Eat(TokenType.Minus);
+                    b = T(); 
+                    return EPrime(a - b);
                 default:
-                    break;
+                    return a;
             }
             
-            return 0.0f;
         }
 
         float T()
         {
-            F(); TPrime();
-
-            return 0.0f;
+            float a = F(); 
+            return TPrime(a);
         }
 
-        float TPrime()
+        float TPrime(float a)
         {
+            float b;
             switch (currentToken_.Type)
             {
                 case TokenType.Div:
-                    Eat(TokenType.Div); F(); TPrime();
-                    break;
+                    Eat(TokenType.Div); 
+                    b = F(); 
+                    return TPrime(a / b);
                 case TokenType.Multiply:
-                    Eat(TokenType.Multiply); F(); TPrime();
-                    break;
+                    Eat(TokenType.Multiply); 
+                    b = F(); 
+                    return TPrime(a * b);
                 default:
-                    break;
+                    return a;
             }
 
-            return 0.0f;
         }
 
         float F()
@@ -84,11 +87,12 @@ namespace Compiler
             switch(currentToken_.Type)
             {
                 case TokenType.Number:
+                    float val = currentToken_.value;
                     Eat(TokenType.Number);
-                    break;
+                    return val;
                 case TokenType.LParenthesis:
-                    Eat(TokenType.LParenthesis); T(); EPrime(); Eat(TokenType.RParenthesis);
-                    break;
+                    Eat(TokenType.LParenthesis); float a = T(); a = EPrime(a); Eat(TokenType.RParenthesis);
+                    return a;
                 default:
                     Error(string.Format("wrong token {0} expect number/left parentthesis", currentToken_.TypeName));
                     break;
@@ -101,9 +105,9 @@ namespace Compiler
         {
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
-            E();
+            float result = E();
 
-            Console.WriteLine("ok");
+            Console.WriteLine(result.ToString() + " ok");
         }
 
     }
