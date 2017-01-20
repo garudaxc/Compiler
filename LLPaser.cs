@@ -10,6 +10,7 @@ namespace Compiler
     {
         Lexer lex_;
         Token currentToken_;
+        InstructionSet set_;
 
         public LLPaser()
         {
@@ -34,23 +35,32 @@ namespace Compiler
 
         float E()
         {
+            set_.EmitMove(0, Instruction.Oper.R0);
             float a = T(); a = EPrime(a); Eat(TokenType.Semicolon);
             return a;
         }
 
         float EPrime(float a)
         {
-            float b;
+            float b, c;
             switch(currentToken_.Type)
             {
                 case TokenType.Add:
                     Eat(TokenType.Add); 
-                    b = T(); 
-                    return EPrime(a + b);
+                    set_.EmitPush(Instruction.Oper.R0);
+                    b = T();
+                    set_.EmitAdd(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    c = EPrime(a + b);
+                    return c;
                 case TokenType.Minus:
                     Eat(TokenType.Minus);
+                    set_.EmitPush(Instruction.Oper.R0);
                     b = T(); 
-                    return EPrime(a - b);
+                    set_.EmitSub(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    c = EPrime(a - b);
+                    return c;
                 default:
                     return a;
             }
@@ -65,17 +75,25 @@ namespace Compiler
 
         float TPrime(float a)
         {
-            float b;
+            float b, c;
             switch (currentToken_.Type)
             {
                 case TokenType.Div:
+                    set_.EmitPush(Instruction.Oper.R0);
                     Eat(TokenType.Div); 
-                    b = F(); 
-                    return TPrime(a / b);
+                    b = F();
+                    set_.EmitDiv(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    c = TPrime(a / b);
+                    return c;
                 case TokenType.Multiply:
                     Eat(TokenType.Multiply); 
+                    set_.EmitPush(Instruction.Oper.R0);
                     b = F(); 
-                    return TPrime(a * b);
+                    set_.EmitMul(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    c = TPrime(a * b);
+                    return c;
                 default:
                     return a;
             }
@@ -88,6 +106,7 @@ namespace Compiler
             {
                 case TokenType.Number:
                     float val = currentToken_.value;
+                    set_.EmitMove(val, Instruction.Oper.R0);
                     Eat(TokenType.Number);
                     return val;
                 case TokenType.LParenthesis:
@@ -101,13 +120,16 @@ namespace Compiler
             return 0.0f;
         }
 
-        public void Parse(Lexer lex)
+        public InstructionSet Parse(Lexer lex)
         {
+            set_ = new InstructionSet();
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
             float result = E();
 
             Console.WriteLine(result.ToString() + " ok");
+
+            return set_;
         }
 
     }

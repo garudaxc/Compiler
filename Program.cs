@@ -56,6 +56,7 @@ namespace Compiler
         {
             Lexer lex = new Lexer();
             LLPaser paser = new LLPaser();
+            VM vm = new VM();
 
             while(true)
             {
@@ -66,8 +67,11 @@ namespace Compiler
                 }
 
                 lex.Accept(s);
-                paser.Parse(lex);
+                InstructionSet set = paser.Parse(lex);
+                set.Print();
+                vm.Run(set);
             }
+
         }
     }
 }
