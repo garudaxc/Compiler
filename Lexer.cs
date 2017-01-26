@@ -8,6 +8,7 @@ namespace Compiler
 {
     enum TokenType
     {
+        Variable,
         Add,
         Minus,
         Multiply,
@@ -15,7 +16,15 @@ namespace Compiler
         Number,
         LParenthesis,
         RParenthesis,
+        LBrace,
+        RBrace,
+        Less,
+        Great,
+        Equal,
         Semicolon,
+        If,
+        While,
+        //Bracket,
         End
     }
 
@@ -52,12 +61,18 @@ namespace Compiler
             }
         }
 
+        public static Token Variable = new Token(TokenType.Variable);
         public static Token Add = new Token(TokenType.Add);
         public static Token Minus = new Token(TokenType.Minus);
         public static Token Multipy = new Token(TokenType.Multiply);
         public static Token Div = new Token(TokenType.Div);
         public static Token LParenthesis = new Token(TokenType.LParenthesis);
         public static Token RParenthesis = new Token(TokenType.RParenthesis);
+        public static Token LBrace = new Token(TokenType.LBrace);
+        public static Token RBrace = new Token(TokenType.RBrace);
+        public static Token Less = new Token(TokenType.Less);
+        public static Token Great = new Token(TokenType.Great);
+        public static Token Equal = new Token(TokenType.Equal);
         public static Token Semicolon = new Token(TokenType.Semicolon);
         public static Token End = new Token(TokenType.End);
     }
@@ -72,7 +87,7 @@ namespace Compiler
 
         public bool Accept(string str)
         {
-            strings_ = str.Split(' ', '\n');
+            strings_ = str.Split(' ', '\n', '\r');
             cntString_ = 0;
             cntChar_ = 0;
 
@@ -108,6 +123,27 @@ namespace Compiler
             return true;
         }
 
+        public static bool IsSymbol(string s, int index, out int i)
+        {
+            i = index;
+            if (!Char.IsLetter(s[i]))
+            {
+                return false;
+            }
+
+            while (i < s.Length && Char.IsLetter(s, i))
+            {
+                i++;
+            }
+
+            while (i < s.Length && Char.IsDigit(s, i))
+            {
+                i++;
+            }
+
+            return true;
+        }
+
 
         public Token GetNextToken()
         {
@@ -122,6 +158,13 @@ namespace Compiler
             Token tok = Token.End;
             while (true)
             {
+                if (s.Length == 0 )
+                {
+                    cntString_++;
+                    s = strings_[cntString_];
+                    continue;
+                }
+                
                 if (s[cntChar_] == '+')
                 {
                     tok = Token.Add;
@@ -167,6 +210,36 @@ namespace Compiler
                     cntChar_++;
                     break;
                 }
+                else if (s[cntChar_] == '{')
+                {
+                    tok = Token.LBrace;
+                    cntChar_++;
+                    break;
+                }
+                else if (s[cntChar_] == '}')
+                {
+                    tok = Token.RBrace;
+                    cntChar_++;
+                    break;
+                }
+                else if (s[cntChar_] == '<')
+                {
+                    tok = Token.Less;
+                    cntChar_++;
+                    break;
+                }
+                else if (s[cntChar_] == '>')
+                {
+                    tok = Token.Great;
+                    cntChar_++;
+                    break;
+                }
+                else if (s[cntChar_] == '=')
+                {
+                    tok = Token.Equal;
+                    cntChar_++;
+                    break;
+                }
                 else if (s[cntChar_] == ';')
                 {
                     tok = Token.Semicolon;
@@ -180,10 +253,34 @@ namespace Compiler
                     cntChar_ = j;
                     break;
                 }
+                else if (s.Equals("if"))
+                {
+                    tok = new Token(TokenType.If);
+                    cntString_++;
+                    cntChar_ = 0;
+                    break;
+                }
+                else if (s.Equals("while"))
+                {
+                    tok = new Token(TokenType.While);
+                    cntString_++;
+                    cntChar_ = 0;
+                    break;
+                }
                 else
                 {
-                    Console.WriteLine("not valid token " + s);
-                    return Token.End;
+                    if (IsSymbol(s, cntChar_, out j))
+                    {
+                        tok = new Token(TokenType.Variable);
+                        tok.str = s.Substring(cntChar_, j - cntChar_);
+                        cntChar_ = j;
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("not valid token " + s);
+                        return Token.End;
+                    }
                 }
 
             }

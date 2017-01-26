@@ -9,6 +9,7 @@ namespace Compiler
     class InstructionSet
     {
         List<Instruction> list = new List<Instruction>();
+        List<int> lables = new List<int>();
 
         public int Count
         {
@@ -31,17 +32,51 @@ namespace Compiler
             }
         }
 
+        static int lableIndex_ = 0;
+        public int NewLable()
+        {
+            return lableIndex_++;
+        }
+
+        public void AddLable(int lable)
+        {
+            while(lables.Count <= lable)
+            {
+                lables.Add(-1);
+            }
+
+            lables[lable] = list.Count;
+        }
+
         public void Emit(Instruction ins)
         {
             list.Add(ins);
         }
 
-        public void EmitMove(object constValue, Instruction.Oper oper)
+        public void EmitMove(Instruction.Oper oper, object constValue)
         {
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Mov;
             ins.o0 = oper;
             ins.val = constValue;
+            list.Add(ins);
+        }
+
+        public void EmitLoad(Instruction.Oper oper, string var)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.Load;
+            ins.o0 = oper;
+            ins.val = var;
+            list.Add(ins);            
+        }
+
+        public void EmitStore(string var, Instruction.Oper oper)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.Store;
+            ins.o0 = oper;
+            ins.val = var;
             list.Add(ins);
         }
 

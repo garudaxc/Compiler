@@ -11,15 +11,23 @@ namespace Compiler
         public enum Op
         {
             Mov,
+            Load,
+            Store,
             Add,
             Sub,
             Mul,
             Div,
+            INC,
+            DEC,
             Push,
             Pop,
-            Jmp,
-            GE,
-            LE,
+            AND,
+            OR,
+            NOT,
+            JMP,
+            CMP,
+            JL,
+            JNL,            
             Call
         }
 
@@ -46,7 +54,7 @@ namespace Compiler
         override public string ToString()
         {
             string s = null;
-            if (op == Op.Mov)
+            if (op == Op.Mov || op == Op.Store || op == Op.Load)
             {
                 s = string.Format("{0}\t{1}, {2}", Enum.GetName(typeof(Op), op),
                     Enum.GetName(typeof(Oper), o0), val);

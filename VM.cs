@@ -13,7 +13,14 @@ namespace Compiler
         object r1;
 
         Stack<object> stack = new Stack<object>();
+        Dictionary<string, object> symbols = new Dictionary<string, object>();
 
+        
+        void Error(string fmt, params Object[] args)
+        {
+            string str = string.Format(fmt, args);
+            Console.WriteLine(str);
+        }
 
         public void Run(InstructionSet set)
         {
@@ -23,7 +30,11 @@ namespace Compiler
                 Execute(ins);
             }
 
-            Console.WriteLine("run result {0}", r0);
+            Console.WriteLine("run result");
+            foreach(var p in symbols)
+            {
+                Console.WriteLine("{0} = {1}", p.Key, p.Value);
+            }
         }
 
 
@@ -103,6 +114,31 @@ namespace Compiler
                         {
                             stack.Pop();
                         }
+                    }
+                    break;
+                case Instruction.Op.Load:
+                    {
+                        object val;
+                        if (!symbols.TryGetValue((string)ins.val, out val))
+                        {
+                            Error("can not find varble {0}", ins.val);
+                            break;
+                        }
+
+                        if (ins.o0 == Instruction.Oper.R0)
+                        {
+                            r0 = val;
+                        }
+                        else if (ins.o0 == Instruction.Oper.R1)
+                        {
+                            r1 = val;
+                        }
+                    }
+                    break;
+                case Instruction.Op.Store:
+                    {
+                        object a = GetOper(ins.o0);
+                        symbols[(string)ins.val] = a;
                     }
                     break;
             }

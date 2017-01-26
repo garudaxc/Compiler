@@ -11,16 +11,18 @@ namespace Compiler
         Lexer lex_;
         Token currentToken_;
         InstructionSet set_;
+        HashSet<string> symbols_;
 
         public LLPaser()
         {
         }
 
-        void Error(string str)
+        void Error(string fmt, params Object[] args)
         {
-            Console.WriteLine("error : " + str);            
+            string str = string.Format(fmt, args);
+            Console.WriteLine(str);
         }
-
+        
         void Eat(TokenType type)
         {
             if (currentToken_.Type == type)
@@ -29,14 +31,57 @@ namespace Compiler
             }
             else
             {
-                Error(string.Format("wrong token type {0} expect {1}", currentToken_.TypeName, Enum.GetName(typeof(TokenType), type)));
+                Error("wrong token type {0} expect {1}", currentToken_.TypeName, Enum.GetName(typeof(TokenType), type));
             }            
+        }
+
+        void Block()
+        {
+            Eat(TokenType.LBrace);
+            while (currentToken_.Type != TokenType.RBrace)
+            {
+                Statement();
+            }
+            Eat(TokenType.RBrace);
+        }
+
+        void Statement()
+        {
+            switch (currentToken_.Type)
+            {
+                case TokenType.Variable:
+                    Assignment();
+                    break;
+                case TokenType.If:
+                    IfStatement();
+                    break;
+                default:
+                    Error("wrong token {0} expect statement", currentToken_.TypeName);
+                    break;
+            }
+        }
+
+        void Assignment()
+        {
+            string var = currentToken_.str;
+            Eat(TokenType.Variable);
+            Eat(TokenType.Equal);
+            E();
+            set_.EmitStore(var, Instruction.Oper.R0); 
+            Eat(TokenType.Semicolon);
+        }
+
+        void IfStatement()
+        {
+            Eat(TokenType.If);
+
+
         }
 
         float E()
         {
             set_.EmitMove(0, Instruction.Oper.R0);
-            float a = T(); a = EPrime(a); Eat(TokenType.Semicolon);
+            float a = T(); a = EPrime(a);
             return a;
         }
 
@@ -63,8 +108,7 @@ namespace Compiler
                     return c;
                 default:
                     return a;
-            }
-            
+            }            
         }
 
         float T()
@@ -106,14 +150,22 @@ namespace Compiler
             {
                 case TokenType.Number:
                     float val = currentToken_.value;
-                    set_.EmitMove(val, Instruction.Oper.R0);
+                    set_.EmitMove(Instruction.Oper.R0, val);
                     Eat(TokenType.Number);
                     return val;
+                case TokenType.Variable:
+                    if (!symbols_.Contains(currentToken_.str))
+                    {
+                        Error("symbol {0} has not been defined!", currentToken_.str);
+                    }
+                    set_.EmitLoad(Instruction.Oper.R0, currentToken_.str);
+                    Eat(TokenType.Variable);                                        
+                    break;
                 case TokenType.LParenthesis:
                     Eat(TokenType.LParenthesis); float a = T(); a = EPrime(a); Eat(TokenType.RParenthesis);
                     return a;
                 default:
-                    Error(string.Format("wrong token {0} expect number/left parentthesis", currentToken_.TypeName));
+                    Error("wrong token {0} expect number/left parentthesis", currentToken_.TypeName);
                     break;
 
             }
@@ -123,11 +175,12 @@ namespace Compiler
         public InstructionSet Parse(Lexer lex)
         {
             set_ = new InstructionSet();
+            symbols_ = new HashSet<string>();
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
-            float result = E();
+            Block();
 
-            Console.WriteLine(result.ToString() + " ok");
+            //Console.WriteLine(result.ToString() + " ok");
 
             return set_;
         }

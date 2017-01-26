@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,48 +30,58 @@ namespace Compiler
             //});
         }
 
-        void Test2()
+        public void TestLexer()
         {
             Lexer lex = new Lexer();
             string s = "12+(2.3-43.)*9/8;";
             //string s = "1+2;";
-            lex.Accept(s);
-            //Token tok;
-            //while((tok = lex.GetNextToken()) != null)
-            //{
-            //    string name = Enum.GetName(typeof(TokenType), tok.Type);
-            //    Console.WriteLine("{0}\t{1}", name, tok.value);
-            //}
+
+
+            string str = File.ReadAllText("testcase.txt");
+
+            lex.Accept(str);
+            Token tok;
+            while ((tok = lex.GetNextToken()) != Token.End)
+            {
+                string name = Enum.GetName(typeof(TokenType), tok.Type);
+                Console.WriteLine("{0}\t{1}", name, tok.value);
+            }
+
         }
 
-        public void Run()
+
+        public void FullTest()
         {
-            Test1();
-            Test2();
+            string str = File.ReadAllText("testcase.txt");
+
+            Lexer lex = new Lexer();
+            LLPaser paser = new LLPaser();
+            VM vm = new VM();
+
+            //while (true)
+            {
+                //string s = Console.ReadLine();
+                //if (s.Length == 0)
+                //{
+                //    break;
+                //}
+
+                lex.Accept(str);
+                InstructionSet set = paser.Parse(lex);
+                set.Print();
+                vm.Run(set);
+            }
         }
     }
 
     class Program
     {
         static void Main(string[] args)
-        {
-            Lexer lex = new Lexer();
-            LLPaser paser = new LLPaser();
-            VM vm = new VM();
+        {      
 
-            while(true)
-            {
-                string s = Console.ReadLine();
-                if (s.Length == 0)
-                {
-                    break;
-                }
-
-                lex.Accept(s);
-                InstructionSet set = paser.Parse(lex);
-                set.Print();
-                vm.Run(set);
-            }
+            Test test = new Test();
+            //test.TestLexer();
+            test.FullTest();
 
         }
     }
