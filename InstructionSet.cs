@@ -101,7 +101,7 @@ namespace Compiler
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Add;
             ins.o0 = oper0;
-            ins.o0 = oper1;
+            ins.o1 = oper1;
             list.Add(ins);
         }
 
@@ -110,7 +110,7 @@ namespace Compiler
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Sub;
             ins.o0 = oper0;
-            ins.o0 = oper1;
+            ins.o1 = oper1;
             list.Add(ins);
         }
 
@@ -119,7 +119,7 @@ namespace Compiler
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Mul;
             ins.o0 = oper0;
-            ins.o0 = oper1;
+            ins.o1 = oper1;
             list.Add(ins);
         }
         public void EmitDiv(Instruction.Oper oper0, Instruction.Oper oper1)
@@ -127,9 +127,69 @@ namespace Compiler
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Div;
             ins.o0 = oper0;
-            ins.o0 = oper1;
+            ins.o1 = oper1;
             list.Add(ins);
         }
+
+        public void EmitJZ()
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.JZ;
+            list.Add(ins);
+        }
+
+        public void EmitJNZ()
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.JNZ;
+            list.Add(ins);
+        }
+
+        public void EmitJA()
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.JA;
+            list.Add(ins);
+        }
+
+        public void EmitJAE()
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.JAE;
+            list.Add(ins);
+        }
+
+        public void EmitJB()
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.JB;
+            list.Add(ins);
+        }
+        public void EmitJBE()
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.JBE;
+            list.Add(ins);
+        }
+
+        public void EmitOr(Instruction.Oper oper, object value)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.OR;
+            ins.o0 = oper;
+            ins.val = value;
+            list.Add(ins);
+        }
+
+        public void EmitAnd(Instruction.Oper oper, object value)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.AND;
+            ins.o0 = oper;
+            ins.val = value;
+            list.Add(ins);
+        }
+
 
         public void Print()
         {

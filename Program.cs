@@ -37,7 +37,8 @@ namespace Compiler
             //string s = "1+2;";
 
 
-            string str = File.ReadAllText("testcase.txt");
+            string[] str = File.ReadAllLines("testcase.txt");
+
 
             lex.Accept(str);
             Token tok;
@@ -52,7 +53,7 @@ namespace Compiler
 
         public void FullTest()
         {
-            string str = File.ReadAllText("testcase.txt");
+            string[] str = File.ReadAllLines("testcase.txt");
 
             Lexer lex = new Lexer();
             LLPaser paser = new LLPaser();
@@ -77,11 +78,10 @@ namespace Compiler
     class Program
     {
         static void Main(string[] args)
-        {      
-
+        {
             Test test = new Test();
-            //test.TestLexer();
-            test.FullTest();
+            test.TestLexer();
+            //test.FullTest();
 
         }
     }

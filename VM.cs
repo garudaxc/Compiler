@@ -20,6 +20,7 @@ namespace Compiler
         {
             string str = string.Format(fmt, args);
             Console.WriteLine(str);
+            throw new Exception();
         }
 
         public void Run(InstructionSet set)
@@ -56,13 +57,26 @@ namespace Compiler
             return null;
         }
 
+        void SetValue(Instruction.Oper oper, object val)
+        {
+            if (oper == Instruction.Oper.R0)
+            {
+                r0 = val;
+            }
+            else if (oper == Instruction.Oper.R1)
+            {
+                r1 = val;
+            }
+
+        }
+
         void Execute(Instruction ins)
         {
             switch(ins.op)
             {
                 case Instruction.Op.Mov:
                     {
-                        r0 = ins.val;
+                        SetValue(ins.o0, ins.val);
                     }
                     break;
                 case Instruction.Op.Add:
@@ -77,21 +91,21 @@ namespace Compiler
                     {
                         object a = GetOper(ins.o0);
                         object b = GetOper(ins.o1);
-                        r0 = (float)a - (float)b;
+                        r0 = (int)a - (int)b;
                     }
                     break;
                 case Instruction.Op.Mul:
                     {
                         object a = GetOper(ins.o0);
                         object b = GetOper(ins.o1);
-                        r0 = (float)a * (float)b;
+                        r0 = (int)a * (int)b;
                     }
                     break;
                 case Instruction.Op.Div:
                     {
                         object a = GetOper(ins.o0);
                         object b = GetOper(ins.o1);
-                        r0 = (float)a / (float)b;
+                        r0 = (int)a / (int)b;
                     }
                     break;
                 case Instruction.Op.Push:
@@ -122,17 +136,9 @@ namespace Compiler
                         if (!symbols.TryGetValue((string)ins.val, out val))
                         {
                             Error("can not find varble {0}", ins.val);
-                            break;
                         }
 
-                        if (ins.o0 == Instruction.Oper.R0)
-                        {
-                            r0 = val;
-                        }
-                        else if (ins.o0 == Instruction.Oper.R1)
-                        {
-                            r1 = val;
-                        }
+                        SetValue(ins.o0, val);
                     }
                     break;
                 case Instruction.Op.Store:

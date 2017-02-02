@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -21,6 +20,7 @@ namespace Compiler
         {
             string str = string.Format(fmt, args);
             Console.WriteLine(str);
+            throw new Exception();
         }
         
         void Eat(TokenType type)
@@ -35,17 +35,17 @@ namespace Compiler
             }            
         }
 
-        void Block()
+        void Block(int lable)
         {
             Eat(TokenType.LBrace);
             while (currentToken_.Type != TokenType.RBrace)
             {
-                Statement();
+                Statement(lable);
             }
             Eat(TokenType.RBrace);
         }
 
-        void Statement()
+        void Statement(int lable)
         {
             switch (currentToken_.Type)
             {
@@ -53,7 +53,7 @@ namespace Compiler
                     Assignment();
                     break;
                 case TokenType.If:
-                    IfStatement();
+                    IfStatement(lable);
                     break;
                 default:
                     Error("wrong token {0} expect statement", currentToken_.TypeName);
@@ -69,18 +69,118 @@ namespace Compiler
             E();
             set_.EmitStore(var, Instruction.Oper.R0); 
             Eat(TokenType.Semicolon);
+            symbols_.Add(var);
         }
 
-        void IfStatement()
+        void IfStatement(int lable)
         {
+            int newLable = set_.NewLable();
             Eat(TokenType.If);
+            BExpression();
+            Block(lable);
+            set_.AddLable(newLable);
+        }
+        
+        void BExpression()
+        {
+            BTerm();
+            BExpressionPrime();
+        }
 
+        void BExpressionPrime()
+        {
+            switch (currentToken_.Type)
+            {
+                case TokenType.Or:
+                    Eat(TokenType.Or);
+                    BTerm();
+                    BExpressionPrime();
+
+                    break;
+                default:
+                    break;
+            }            
+        }
+
+        
+        void BTerm()
+        {
+            BFactor();
+            BTermPrime();
+        }
+
+        void BTermPrime()
+        {
+            switch (currentToken_.Type)
+            {
+                case TokenType.And:
+                    Eat(TokenType.And);
+                    BFactor();
+                    BTermPrime();
+
+                    break;
+                default:
+                    break;
+            }
+        }
+               
+
+        void BFactor()
+        {
+            switch (currentToken_.Type)
+            {
+                case TokenType.Not:
+                    Eat(TokenType.Not);
+                    BFactor();
+                    break;
+                default:
+                    E();
+                    InequalOp();
+                    break;
+            }
+        }
+
+        void InequalOp()
+        {
+            switch (currentToken_.Type)
+            {
+                case TokenType.EqualEqual:
+                    Eat(TokenType.EqualEqual);
+                    set_.EmitPush(Instruction.Oper.R0);
+                    E();
+                    set_.EmitSub(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    set_.EmitAnd(Instruction.Oper.R0, 0xffffffff);
+                    break;
+                case TokenType.NotEqual:
+                    Eat(TokenType.NotEqual);
+                    E();
+                    break;
+                case TokenType.Less:
+                    Eat(TokenType.Less);
+                    E();
+                    break;
+                case TokenType.LessEqual:
+                    Eat(TokenType.LessEqual);
+                    E();
+                    break;
+                case TokenType.Great:
+                    Eat(TokenType.Great);
+                    E();
+                    break;
+                case TokenType.GreatEqual:
+                    Eat(TokenType.GreatEqual);
+                    E();
+                    break;
+                default:
+                    break;
+            }
 
         }
 
         float E()
         {
-            set_.EmitMove(0, Instruction.Oper.R0);
+            set_.EmitMove(Instruction.Oper.R0, 0);
             float a = T(); a = EPrime(a);
             return a;
         }
@@ -148,6 +248,12 @@ namespace Compiler
         {
             switch(currentToken_.Type)
             {
+                case TokenType.Minus:
+                    Eat(TokenType.Minus);
+                    F();
+                    set_.EmitMove(Instruction.Oper.R1, 0);
+                    set_.EmitSub(Instruction.Oper.R1, Instruction.Oper.R0);
+                    break;
                 case TokenType.Number:
                     float val = currentToken_.value;
                     set_.EmitMove(Instruction.Oper.R0, val);
@@ -178,7 +284,7 @@ namespace Compiler
             symbols_ = new HashSet<string>();
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
-            Block();
+            Block(-1);
 
             //Console.WriteLine(result.ToString() + " ok");
 

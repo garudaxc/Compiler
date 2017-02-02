@@ -24,10 +24,14 @@ namespace Compiler
             AND,
             OR,
             NOT,
-            JMP,
             CMP,
-            JL,
-            JNL,            
+            JMP,
+            JZ,
+            JNZ,
+            JA,
+            JAE,
+            JB,
+            JBE,
             Call
         }
 
