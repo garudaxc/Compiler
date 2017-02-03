@@ -8,9 +8,12 @@ namespace Compiler
 {
     class VM
     {
-        object programe;
         object r0;
         object r1;
+        int zf;
+        int sf;
+        int current;
+        InstructionSet set_;
 
         Stack<object> stack = new Stack<object>();
         Dictionary<string, object> symbols = new Dictionary<string, object>();
@@ -25,10 +28,11 @@ namespace Compiler
 
         public void Run(InstructionSet set)
         {
-            for (int i = 0; i < set.Count; i++)
+            set_ = set;
+            for (current = 0; current < set.Count;)
             {
-                Instruction ins = set[i];
-                Execute(ins);
+                Instruction ins = set[current];
+                current = Execute(ins);
             }
 
             Console.WriteLine("run result");
@@ -37,7 +41,6 @@ namespace Compiler
                 Console.WriteLine("{0} = {1}", p.Key, p.Value);
             }
         }
-
 
         object GetOper(Instruction.Oper oper)
         {
@@ -67,10 +70,9 @@ namespace Compiler
             {
                 r1 = val;
             }
-
         }
 
-        void Execute(Instruction ins)
+        int Execute(Instruction ins)
         {
             switch(ins.op)
             {
@@ -78,42 +80,43 @@ namespace Compiler
                     {
                         SetValue(ins.o0, ins.val);
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Add:
                     {
                         object a = GetOper(ins.o0);
                         object b = GetOper(ins.o1);
-                        r0 = (float)a + (float)b;
+                        int v = (int)a + (int)b;
+                        SetValue(ins.o0, v);
                     }
-
-                    break;
-                case Instruction.Op.Sub:
+                    return current + 1;
+                case Instruction.Op.NEG:
                     {
                         object a = GetOper(ins.o0);
-                        object b = GetOper(ins.o1);
-                        r0 = (int)a - (int)b;
+                        SetValue(ins.o0, -(int)a);
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Mul:
                     {
                         object a = GetOper(ins.o0);
                         object b = GetOper(ins.o1);
-                        r0 = (int)a * (int)b;
+                        int v = (int)a * (int)b;
+                        SetValue(ins.o0, v);
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Div:
                     {
                         object a = GetOper(ins.o0);
                         object b = GetOper(ins.o1);
-                        r0 = (int)a / (int)b;
+                        int v = (int)a / (int)b;
+                        SetValue(ins.o0, v);
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Push:
                     {
                         object a = GetOper(ins.o0);
                         stack.Push(a);
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Pop:
                     {
                         if (ins.o0 == Instruction.Oper.R0)
@@ -129,7 +132,7 @@ namespace Compiler
                             stack.Pop();
                         }
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Load:
                     {
                         object val;
@@ -140,14 +143,139 @@ namespace Compiler
 
                         SetValue(ins.o0, val);
                     }
-                    break;
+                    return current + 1;
                 case Instruction.Op.Store:
                     {
                         object a = GetOper(ins.o0);
                         symbols[(string)ins.val] = a;
                     }
+                    return current + 1;
+                case Instruction.Op.CMP:
+                    {
+                        object a = GetOper(ins.o0);
+                        object b = GetOper(ins.o1);
+                        int v = (int)a - (int)b;
+                        if (v == 0)
+                        {
+                            zf = 1;
+                        }
+                        else
+                        {
+                            zf = 0;
+                        }
+
+                        if (v < 0)
+                        {
+                            sf = 1;
+                        }
+                        else
+                        {
+                            sf = 0;
+                        }
+                    }
+                    return current + 1;
+                case Instruction.Op.TEST:
+                    {
+                        object a = GetOper(ins.o0);
+                        object b = GetOper(ins.o1);
+                        int v = (int)a & (int)b;
+                        if (v == 0)
+                        {
+                            zf = 1;
+                        }
+                        else
+                        {
+                            zf = 0;
+                        }
+
+                        if (v < 0)
+                        {
+                            sf = 1;
+                        }
+                        else
+                        {
+                            sf = 0;
+                        }
+                    }
+                    return current + 1;
+                case Instruction.Op.AND:
+                    {
+                        object a = GetOper(ins.o0);
+                        object b = GetOper(ins.o1);
+                        int v = (int)a & (int)b;
+                        SetValue(ins.o0, v);
+                    }
+                    return current + 1;
+                case Instruction.Op.OR:
+                    {
+                        object a = GetOper(ins.o0);
+                        object b = GetOper(ins.o1);
+                        int v = (int)a | (int)b;
+                        SetValue(ins.o0, v);
+                    }
+                    return current + 1;
+                case Instruction.Op.JMP:
+                    return set_.GetLable(ins.i4);
+                case Instruction.Op.JZ:
+                    if (zf == 1)
+                    {
+                        return set_.GetLable(ins.i4);
+                    }
+                    break;
+                case Instruction.Op.JNZ:
+                    if (zf == 0)
+                    {
+                        return set_.GetLable(ins.i4);
+                    }
+                    break;
+                case Instruction.Op.JA:
+                    if (zf == 0 && sf == 0)
+                    {
+                        return set_.GetLable(ins.i4);
+                    }
+                    break;
+                case Instruction.Op.JAE:
+                    if (sf == 0 || zf == 1)
+                    {
+                        return set_.GetLable(ins.i4);
+                    }
+                    break;
+                case Instruction.Op.JB:
+                    if (zf == 0 && sf == 1)
+                    {
+                        return set_.GetLable(ins.i4);
+                    }
+                    break;
+                case Instruction.Op.JBE:
+                    if (sf == 1 || zf == 1)
+                    {
+                        return set_.GetLable(ins.i4);
+                    }
+                    break;
+
+                case Instruction.Op.LZ:
+                    r0 = zf;
+                    return current + 1;
+                case Instruction.Op.LNZ:
+                    r0 = zf ^ 0x1;
+                    return current + 1;
+                case Instruction.Op.LA:
+                    r0 = (zf ^ 0x1) & (sf ^ 0x1);
+                    return current + 1;
+                case Instruction.Op.LAE:
+                    r0 = (sf ^ 0x1) | zf;
+                    return current + 1;
+                case Instruction.Op.LB:
+                    r0 = (zf ^ 0x1) & sf;
+                    return current + 1;
+                case Instruction.Op.LBE:
+                    r0 = sf | zf;
+                    return current + 1;
+                default:
+                    Error("not valid instructon {0}", Enum.GetName(typeof(Instruction.Op), ins.op));
                     break;
             }
+            return current + 1;
         }
 
     }

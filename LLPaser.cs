@@ -55,6 +55,8 @@ namespace Compiler
                 case TokenType.If:
                     IfStatement(lable);
                     break;
+                case TokenType.While:
+                    break;
                 default:
                     Error("wrong token {0} expect statement", currentToken_.TypeName);
                     break;
@@ -74,11 +76,32 @@ namespace Compiler
 
         void IfStatement(int lable)
         {
-            int newLable = set_.NewLable();
+            int lf = set_.NewLable();
             Eat(TokenType.If);
             BExpression();
+            set_.EmitTest(Instruction.Oper.R0, Instruction.Oper.R0);
+            set_.EmitJZ(lf);
             Block(lable);
-            set_.AddLable(newLable);
+            int le = ElseStat(lable, lf);            
+            set_.AddLable(le);
+        }
+
+        int ElseStat(int lable, int lf)
+        {
+            switch (currentToken_.Type)
+            {
+                case TokenType.Else:
+                    {
+                        int le = set_.NewLable();
+                        set_.EmitJmp(le);
+                        Eat(TokenType.Else);
+                        set_.AddLable(lf);
+                        Block(lable);
+                        return le;
+                    }
+                default:
+                    return lf;
+            }
         }
         
         void BExpression()
@@ -93,9 +116,11 @@ namespace Compiler
             {
                 case TokenType.Or:
                     Eat(TokenType.Or);
+                    set_.EmitPush(Instruction.Oper.R0);
                     BTerm();
                     BExpressionPrime();
-
+                    set_.EmitOr(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
                     break;
                 default:
                     break;
@@ -115,9 +140,11 @@ namespace Compiler
             {
                 case TokenType.And:
                     Eat(TokenType.And);
+                    set_.EmitPush(Instruction.Oper.R0);
                     BFactor();
                     BTermPrime();
-
+                    set_.EmitAnd(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitPop(Instruction.Oper.SP);
                     break;
                 default:
                     break;
@@ -148,29 +175,49 @@ namespace Compiler
                     Eat(TokenType.EqualEqual);
                     set_.EmitPush(Instruction.Oper.R0);
                     E();
-                    set_.EmitSub(Instruction.Oper.R0, Instruction.Oper.SP);
+                    set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
-                    set_.EmitAnd(Instruction.Oper.R0, 0xffffffff);
+                    set_.EmitLZ();
                     break;
                 case TokenType.NotEqual:
                     Eat(TokenType.NotEqual);
+                    set_.EmitPush(Instruction.Oper.R0);
                     E();
+                    set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    set_.EmitLNZ();
                     break;
                 case TokenType.Less:
                     Eat(TokenType.Less);
+                    set_.EmitPush(Instruction.Oper.R0);
                     E();
+                    set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    set_.EmitLB();
                     break;
                 case TokenType.LessEqual:
                     Eat(TokenType.LessEqual);
+                    set_.EmitPush(Instruction.Oper.R0);
                     E();
+                    set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    set_.EmitLBE();
                     break;
                 case TokenType.Great:
                     Eat(TokenType.Great);
+                    set_.EmitPush(Instruction.Oper.R0);
                     E();
+                    set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    set_.EmitLA();
                     break;
                 case TokenType.GreatEqual:
                     Eat(TokenType.GreatEqual);
+                    set_.EmitPush(Instruction.Oper.R0);
                     E();
+                    set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
+                    set_.EmitPop(Instruction.Oper.SP);
+                    set_.EmitLAE();
                     break;
                 default:
                     break;
@@ -178,87 +225,86 @@ namespace Compiler
 
         }
 
-        float E()
+        void E()
         {
-            set_.EmitMove(Instruction.Oper.R0, 0);
-            float a = T(); a = EPrime(a);
-            return a;
+            T();
+            EPrime();
         }
 
-        float EPrime(float a)
+        void EPrime()
         {
-            float b, c;
             switch(currentToken_.Type)
             {
                 case TokenType.Add:
                     Eat(TokenType.Add); 
                     set_.EmitPush(Instruction.Oper.R0);
-                    b = T();
+                    T();
                     set_.EmitAdd(Instruction.Oper.R0, Instruction.Oper.SP);
                     set_.EmitPop(Instruction.Oper.SP);
-                    c = EPrime(a + b);
-                    return c;
+                    EPrime();
+                    break;
                 case TokenType.Minus:
                     Eat(TokenType.Minus);
                     set_.EmitPush(Instruction.Oper.R0);
-                    b = T(); 
-                    set_.EmitSub(Instruction.Oper.R0, Instruction.Oper.SP);
+                    T();
+                    set_.EmitNeg(Instruction.Oper.R0);
+                    set_.EmitAdd(Instruction.Oper.R0, Instruction.Oper.SP);
+                    //set_.EmitSub(Instruction.Oper.R0, Instruction.Oper.SP);
                     set_.EmitPop(Instruction.Oper.SP);
-                    c = EPrime(a - b);
-                    return c;
+                    EPrime();
+                    break;
                 default:
-                    return a;
+                    break;
             }            
         }
 
-        float T()
+        void T()
         {
-            float a = F(); 
-            return TPrime(a);
+            F(); 
+            TPrime();
         }
 
-        float TPrime(float a)
+        void TPrime()
         {
-            float b, c;
             switch (currentToken_.Type)
             {
                 case TokenType.Div:
                     set_.EmitPush(Instruction.Oper.R0);
                     Eat(TokenType.Div); 
-                    b = F();
+                    F();
                     set_.EmitDiv(Instruction.Oper.R0, Instruction.Oper.SP);
                     set_.EmitPop(Instruction.Oper.SP);
-                    c = TPrime(a / b);
-                    return c;
+                    TPrime();
+                    break;
                 case TokenType.Multiply:
                     Eat(TokenType.Multiply); 
                     set_.EmitPush(Instruction.Oper.R0);
-                    b = F(); 
+                    F(); 
                     set_.EmitMul(Instruction.Oper.R0, Instruction.Oper.SP);
                     set_.EmitPop(Instruction.Oper.SP);
-                    c = TPrime(a * b);
-                    return c;
+                    TPrime();
+                    break;
                 default:
-                    return a;
+                    break;
             }
-
         }
 
-        float F()
+        void F()
         {
             switch(currentToken_.Type)
             {
                 case TokenType.Minus:
                     Eat(TokenType.Minus);
                     F();
-                    set_.EmitMove(Instruction.Oper.R1, 0);
-                    set_.EmitSub(Instruction.Oper.R1, Instruction.Oper.R0);
+                    //set_.EmitMove(Instruction.Oper.R1, 0);
+                    //set_.EmitSub(Instruction.Oper.R1, Instruction.Oper.R0);
+                    set_.EmitNeg(Instruction.Oper.R0);
                     break;
                 case TokenType.Number:
-                    float val = currentToken_.value;
+                    int val = currentToken_.i4;
                     set_.EmitMove(Instruction.Oper.R0, val);
                     Eat(TokenType.Number);
-                    return val;
+                    break;
                 case TokenType.Variable:
                     if (!symbols_.Contains(currentToken_.str))
                     {
@@ -268,14 +314,16 @@ namespace Compiler
                     Eat(TokenType.Variable);                                        
                     break;
                 case TokenType.LParenthesis:
-                    Eat(TokenType.LParenthesis); float a = T(); a = EPrime(a); Eat(TokenType.RParenthesis);
-                    return a;
+                    Eat(TokenType.LParenthesis); 
+                    T();
+                    EPrime(); 
+                    Eat(TokenType.RParenthesis);
+                    break;
                 default:
                     Error("wrong token {0} expect number/left parentthesis", currentToken_.TypeName);
                     break;
 
             }
-            return 0.0f;
         }
 
         public InstructionSet Parse(Lexer lex)

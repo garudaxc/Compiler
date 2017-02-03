@@ -30,7 +30,7 @@ namespace Compiler
             //});
         }
 
-        public void TestLexer()
+        public void LexerTest()
         {
             Lexer lex = new Lexer();
             string s = "12+(2.3-43.)*9/8;";
@@ -45,7 +45,7 @@ namespace Compiler
             while ((tok = lex.GetNextToken()) != Token.End)
             {
                 string name = Enum.GetName(typeof(TokenType), tok.Type);
-                Console.WriteLine("{0}\t{1}", name, tok.value);
+                Console.WriteLine("{0}\t{1}", name, tok.i4);
             }
 
         }
@@ -59,19 +59,23 @@ namespace Compiler
             LLPaser paser = new LLPaser();
             VM vm = new VM();
 
-            //while (true)
-            {
-                //string s = Console.ReadLine();
-                //if (s.Length == 0)
-                //{
-                //    break;
-                //}
+            lex.Accept(str);
+            InstructionSet set = paser.Parse(lex);
+            set.Print();
+            vm.Run(set);
+        }
 
-                lex.Accept(str);
-                InstructionSet set = paser.Parse(lex);
-                set.Print();
-                vm.Run(set);
-            }
+        public void ParserTest()
+        {
+            string[] str = File.ReadAllLines("testcase.txt");
+
+            Lexer lex = new Lexer();
+            LLPaser paser = new LLPaser();
+            VM vm = new VM();
+
+            lex.Accept(str);
+            InstructionSet set = paser.Parse(lex);
+            set.Print();
         }
     }
 
@@ -80,9 +84,9 @@ namespace Compiler
         static void Main(string[] args)
         {
             Test test = new Test();
-            test.TestLexer();
-            //test.FullTest();
-
+            //test.TestLexer();
+            test.FullTest();
+            //test.ParserTest();
         }
     }
 }

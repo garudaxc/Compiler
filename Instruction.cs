@@ -17,14 +17,17 @@ namespace Compiler
             Sub,
             Mul,
             Div,
+            NEG,
             INC,
             DEC,
             Push,
             Pop,
             AND,
             OR,
+            XOR,
             NOT,
             CMP,
+            TEST,
             JMP,
             JZ,
             JNZ,
@@ -32,14 +35,16 @@ namespace Compiler
             JAE,
             JB,
             JBE,
+
+            LZ,
+            LNZ,
+            LA,
+            LAE,
+            LB,
+            LBE,
             Call
         }
 
-        struct OpInfo
-        {
-            int numOper;
-
-        }
 
         public enum Oper
         {
@@ -53,11 +58,19 @@ namespace Compiler
         public Oper o0;
         public Oper o1;
         public object val;
+        public int i4;
         public Type type;
 
         override public string ToString()
         {
             string s = null;
+
+            if (op >= Op.JMP && op <= Op.JBE)
+            {
+                s = string.Format("{0}\tl{1}", Enum.GetName(typeof(Op), op), i4);
+                return s;
+            }
+
             if (op == Op.Mov || op == Op.Store || op == Op.Load)
             {
                 s = string.Format("{0}\t{1}, {2}", Enum.GetName(typeof(Op), op),

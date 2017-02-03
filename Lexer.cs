@@ -33,6 +33,7 @@ namespace Compiler
         Or,
         Semicolon,
         If,
+        Else,
         While,
         //Bracket,
         End
@@ -57,7 +58,13 @@ namespace Compiler
             get;
         }
 
-        public float value
+        public float f32
+        {
+            set;
+            get;
+        }
+
+        public int i4
         {
             set;
             get;
@@ -92,6 +99,9 @@ namespace Compiler
         public static Token Not = new Token(TokenType.Not);
         public static Token And = new Token(TokenType.And);
         public static Token Or = new Token(TokenType.Or);
+        public static Token If = new Token(TokenType.If);
+        public static Token Else = new Token(TokenType.Else);
+        public static Token While = new Token(TokenType.While);
         public static Token Semicolon = new Token(TokenType.Semicolon);
         public static Token End = new Token(TokenType.End);
     }
@@ -132,7 +142,7 @@ namespace Compiler
 
             string s = builder.ToString();
 
-            strings_ = s.Split(' ');
+            strings_ = s.Split(' ', '\t');
             cntString_ = 0;
             cntChar_ = 0;
 
@@ -337,20 +347,27 @@ namespace Compiler
                 else if (IsNumber(s, cntChar_, out j))
                 {
                     tok = new Token(TokenType.Number);
-                    tok.value = float.Parse(s.Substring(cntChar_, j - cntChar_));
+                    tok.i4 = int.Parse(s.Substring(cntChar_, j - cntChar_));
                     cntChar_ = j;
                     break;
                 }
                 else if (s.Equals("if"))
                 {
-                    tok = new Token(TokenType.If);
+                    tok = Token.If;
+                    cntString_++;
+                    cntChar_ = 0;
+                    break;
+                }
+                else if (s.Equals("else"))
+                {
+                    tok = Token.Else;
                     cntString_++;
                     cntChar_ = 0;
                     break;
                 }
                 else if (s.Equals("while"))
                 {
-                    tok = new Token(TokenType.While);
+                    tok = Token.While;
                     cntString_++;
                     cntChar_ = 0;
                     break;
