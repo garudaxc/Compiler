@@ -45,7 +45,6 @@ namespace Compiler
             Call
         }
 
-
         public enum Oper
         {
             R0,
@@ -53,13 +52,11 @@ namespace Compiler
             SP,
         }
 
-
         public Op op;
         public Oper o0;
         public Oper o1;
         public object val;
         public int i4;
-        public Type type;
 
         override public string ToString()
         {
@@ -67,7 +64,7 @@ namespace Compiler
 
             if (op >= Op.JMP && op <= Op.JBE)
             {
-                s = string.Format("{0}\tl{1}", Enum.GetName(typeof(Op), op), i4);
+                s = string.Format("{0}\tlable{1}", Enum.GetName(typeof(Op), op), i4);
                 return s;
             }
 

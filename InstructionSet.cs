@@ -276,26 +276,49 @@ namespace Compiler
         }
 
 
-        public void Print()
+        public void Print(bool lineNum = false)
         {
-            int i = 0;
-            for (int j = 0; j < lables.Count; j++)
+            List<KeyValuePair<int, int>> ll = new List<KeyValuePair<int, int>>();
+            for (int i = 0; i < lables.Count; i++)
             {
-                while ( i < lables[j] )
+                ll.Add(new KeyValuePair<int, int>(lables[i], i));
+            }
+            ll.Sort((a, b) =>
+            {
+                if (a.Key < b.Key) return -1;
+                else if (a.Key == b.Key) return 0;
+                else return 1;
+            });
+            
+            Action<int, Instruction> WriteLine = (i, ins) =>
+            {
+                if (lineNum)
                 {
                     Console.Write(i);
-                    Console.Write('\t');
-                    Console.WriteLine(list[i]);
-                    i++;
                 }
-                Console.WriteLine(string.Format("lable {0}: {1}", j, lables[j]));
-            }
-
-            for (; i < list.Count; i++)
-            {
-                Console.Write(i);
                 Console.Write('\t');
                 Console.WriteLine(list[i]);
+            };
+
+            int n = 0;
+            for (int j = 0; j < ll.Count; j++)
+            {
+                while (n < ll[j].Key)
+                {
+                    WriteLine(n, list[n]);
+                    n++;
+                }
+                Console.Write(string.Format("lable{0}: ", ll[j].Value));
+                if (lineNum)
+                {
+                    Console.Write(ll[j].Key);
+                }
+                Console.WriteLine();
+            }
+
+            for (; n < list.Count; n++)
+            {
+                WriteLine(n, list[n]);
             }
         }
     

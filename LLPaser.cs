@@ -35,17 +35,17 @@ namespace Compiler
             }            
         }
 
-        void Block(int lable)
+        void Block(int start, int end)
         {
             Eat(TokenType.LBrace);
             while (currentToken_.Type != TokenType.RBrace)
             {
-                Statement(lable);
+                Statement(start, end);
             }
             Eat(TokenType.RBrace);
         }
 
-        void Statement(int lable)
+        void Statement(int start, int end)
         {
             switch (currentToken_.Type)
             {
@@ -53,9 +53,20 @@ namespace Compiler
                     Assignment();
                     break;
                 case TokenType.If:
-                    IfStatement(lable);
+                    IfStatement(start, end);
                     break;
                 case TokenType.While:
+                    WhileStatement();
+                    break;
+                case TokenType.Continue:
+                    Eat(TokenType.Continue);
+                    Eat(TokenType.Semicolon);
+                    set_.EmitJmp(start);
+                    break;
+                case TokenType.Break:
+                    Eat(TokenType.Break);
+                    Eat(TokenType.Semicolon);
+                    set_.EmitJmp(end);
                     break;
                 default:
                     Error("wrong token {0} expect statement", currentToken_.TypeName);
@@ -74,19 +85,33 @@ namespace Compiler
             symbols_.Add(var);
         }
 
-        void IfStatement(int lable)
+        void IfStatement(int start, int end)
         {
             int lf = set_.NewLable();
             Eat(TokenType.If);
             BExpression();
             set_.EmitTest(Instruction.Oper.R0, Instruction.Oper.R0);
             set_.EmitJZ(lf);
-            Block(lable);
-            int le = ElseStat(lable, lf);            
+            Block(start, end);
+            int le = ElseStat(start, end, lf);            
             set_.AddLable(le);
         }
 
-        int ElseStat(int lable, int lf)
+        void WhileStatement()
+        {
+            int start = set_.NewLable();
+            int end = set_.NewLable();
+            Eat(TokenType.While);
+            set_.AddLable(start);
+            BExpression();
+            set_.EmitTest(Instruction.Oper.R0, Instruction.Oper.R0);
+            set_.EmitJZ(end);
+            Block(start, end);
+            set_.EmitJmp(start);
+            set_.AddLable(end);
+        }
+
+        int ElseStat(int start, int end, int lf)
         {
             switch (currentToken_.Type)
             {
@@ -96,7 +121,7 @@ namespace Compiler
                         set_.EmitJmp(le);
                         Eat(TokenType.Else);
                         set_.AddLable(lf);
-                        Block(lable);
+                        Block(start, end);
                         return le;
                     }
                 default:
@@ -126,7 +151,6 @@ namespace Compiler
                     break;
             }            
         }
-
         
         void BTerm()
         {
@@ -332,7 +356,7 @@ namespace Compiler
             symbols_ = new HashSet<string>();
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
-            Block(-1);
+            Block(-1, -1);
 
             //Console.WriteLine(result.ToString() + " ok");
 

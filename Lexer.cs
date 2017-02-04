@@ -26,8 +26,6 @@ namespace Compiler
         GreatEqual,
         EqualEqual,
         NotEqual,
-        True,
-        False,
         Not,
         And,
         Or,
@@ -35,8 +33,16 @@ namespace Compiler
         If,
         Else,
         While,
+        Break,
+        Continue,
         //Bracket,
         End
+    }
+
+    struct TokenInfo
+    {
+        public string s;
+        public Token tok;
     }
 
     class Token
@@ -78,34 +84,12 @@ namespace Compiler
             }
         }
 
-        public static Token Variable = new Token(TokenType.Variable);
-        public static Token Add = new Token(TokenType.Add);
-        public static Token Minus = new Token(TokenType.Minus);
-        public static Token Multipy = new Token(TokenType.Multiply);
-        public static Token Div = new Token(TokenType.Div);
-        public static Token LParenthesis = new Token(TokenType.LParenthesis);
-        public static Token RParenthesis = new Token(TokenType.RParenthesis);
-        public static Token LBrace = new Token(TokenType.LBrace);
-        public static Token RBrace = new Token(TokenType.RBrace);
-        public static Token Less = new Token(TokenType.Less);
-        public static Token Great = new Token(TokenType.Great);
-        public static Token Equal = new Token(TokenType.Equal);
-        public static Token LessEqual = new Token(TokenType.LessEqual);
-        public static Token GreatEqual = new Token(TokenType.GreatEqual);
-        public static Token EqualEqual = new Token(TokenType.EqualEqual);
-        public static Token NotEqual = new Token(TokenType.NotEqual);
-        public static Token True = new Token(TokenType.True);
-        public static Token False = new Token(TokenType.False);
         public static Token Not = new Token(TokenType.Not);
-        public static Token And = new Token(TokenType.And);
-        public static Token Or = new Token(TokenType.Or);
         public static Token If = new Token(TokenType.If);
         public static Token Else = new Token(TokenType.Else);
         public static Token While = new Token(TokenType.While);
-        public static Token Semicolon = new Token(TokenType.Semicolon);
         public static Token End = new Token(TokenType.End);
     }
-
 
 
     class Lexer : IEnumerable<Token>
@@ -113,6 +97,30 @@ namespace Compiler
         string[] strings_;
         int cntString_;
         int cntChar_;
+
+        static TokenInfo[] tokens = new TokenInfo[] {
+            new TokenInfo {s = "break", tok = new Token(TokenType.Break)},
+            new TokenInfo {s = "continue", tok = new Token(TokenType.Continue)},
+            new TokenInfo {s = "<=", tok = new Token(TokenType.LessEqual)},
+            new TokenInfo {s = ">=", tok = new Token(TokenType.GreatEqual)},
+            new TokenInfo {s = "==", tok = new Token(TokenType.EqualEqual)},
+            new TokenInfo {s = "!=", tok = new Token(TokenType.NotEqual)},
+            new TokenInfo {s = "&&", tok = new Token(TokenType.And)},
+            new TokenInfo {s = "||", tok = new Token(TokenType.Or)},
+            new TokenInfo {s = "+", tok = new Token(TokenType.Add)},
+            new TokenInfo {s = "-", tok = new Token(TokenType.Minus)},
+            new TokenInfo {s = "*", tok = new Token(TokenType.Multiply)},
+            new TokenInfo {s = "/", tok = new Token(TokenType.Div)},
+            new TokenInfo {s = "(", tok = new Token(TokenType.LParenthesis)},
+            new TokenInfo {s = ")", tok = new Token(TokenType.RParenthesis)},
+            new TokenInfo {s = "{", tok = new Token(TokenType.LBrace)},
+            new TokenInfo {s = "}", tok = new Token(TokenType.RBrace)},
+            new TokenInfo {s = ">", tok = new Token(TokenType.Great)},
+            new TokenInfo {s = "<", tok = new Token(TokenType.Less)},
+            new TokenInfo {s = "=", tok = new Token(TokenType.Equal)},
+            new TokenInfo {s = ";", tok = new Token(TokenType.Semicolon)},
+        };
+
 
         public bool Accept(string str)
         {
@@ -206,7 +214,7 @@ namespace Compiler
                 return false;
             }
 
-            for(int i = 0; i < sub.Length; i++)
+            for (int i = 0; i < sub.Length; i++)
             {
                 if (s[start + i] != sub[i])
                     return false;
@@ -230,121 +238,23 @@ namespace Compiler
             {
                 return tok;
             }
-            
+
             string s = strings_[cntString_];
 
             int j = 0;
             while (true)
-            {                
-                if (s[cntChar_] == '+')
+            {
+                for (int i = 0; i < tokens.Length; i++)
                 {
-                    tok = Token.Add;
-                    cntChar_++;
-                    break;
+                    if (Match(s, cntChar_, tokens[i].s))
+                    {
+                        tok = tokens[i].tok;
+                        cntChar_ += tokens[i].s.Length;
+                        return tok;
+                    }
                 }
-                else if (s[cntChar_] == '-')
-                {
-                    tok = Token.Minus;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '*')
-                {
-                    tok = Token.Multipy;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '/')
-                {
-                    tok = Token.Div;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '(')
-                {
-                    tok = Token.LParenthesis;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == ')')
-                {
-                    tok = Token.RParenthesis;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '{')
-                {
-                    tok = Token.LBrace;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '}')
-                {
-                    tok = Token.RBrace;
-                    cntChar_++;
-                    break;
-                }
-                else if (Match(s, cntChar_, "<="))
-                {
-                    tok = Token.LessEqual;
-                    cntChar_ += 2;
-                    break;
-                }
-                else if (Match(s, cntChar_, ">="))
-                {
-                    tok = Token.GreatEqual;
-                    cntChar_ += 2;
-                    break;
-                }
-                else if (Match(s, cntChar_, "=="))
-                {
-                    tok = Token.EqualEqual;
-                    cntChar_ += 2;
-                    break;
-                }
-                else if (Match(s, cntChar_, "!="))
-                {
-                    tok = Token.NotEqual;
-                    cntChar_ += 2;
-                    break;
-                }
-                else if (Match(s, cntChar_, "&&"))
-                {
-                    tok = Token.And;
-                    cntChar_ += 2;
-                    break;
-                }
-                else if (Match(s, cntChar_, "||"))
-                {
-                    tok = Token.Or;
-                    cntChar_ += 2;
-                    break;
-                }
-                else if (s[cntChar_] == '<')
-                {
-                    tok = Token.Less;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '>')
-                {
-                    tok = Token.Great;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == '=')
-                {
-                    tok = Token.Equal;
-                    cntChar_++;
-                    break;
-                }
-                else if (s[cntChar_] == ';')
-                {
-                    tok = Token.Semicolon;
-                    cntChar_++;
-                    break;
-                }
-                else if (IsNumber(s, cntChar_, out j))
+
+                if (IsNumber(s, cntChar_, out j))
                 {
                     tok = new Token(TokenType.Number);
                     tok.i4 = int.Parse(s.Substring(cntChar_, j - cntChar_));
@@ -372,20 +282,6 @@ namespace Compiler
                     cntChar_ = 0;
                     break;
                 }
-                else if (s.Equals("true"))
-                {
-                    tok = new Token(TokenType.True);
-                    cntString_++;
-                    cntChar_ = 0;
-                    break;
-                }
-                else if (s.Equals("false"))
-                {
-                    tok = new Token(TokenType.False);
-                    cntString_++;
-                    cntChar_ = 0;
-                    break;
-                }
                 else
                 {
                     if (IsSymbol(s, cntChar_, out j))
@@ -401,13 +297,10 @@ namespace Compiler
                         return Token.End;
                     }
                 }
-
             }
 
-            
             return tok;
         }
-
 
         public IEnumerator<Token> GetEnumerator()
         {

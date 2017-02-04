@@ -33,7 +33,7 @@ namespace Compiler
         public void LexerTest()
         {
             Lexer lex = new Lexer();
-            string s = "12+(2.3-43.)*9/8;";
+            //string s = "12+(2.3-43.)*9/8;";
             //string s = "1+2;";
 
 
@@ -84,7 +84,7 @@ namespace Compiler
         static void Main(string[] args)
         {
             Test test = new Test();
-            //test.TestLexer();
+            //test.LexerTest();
             test.FullTest();
             //test.ParserTest();
         }

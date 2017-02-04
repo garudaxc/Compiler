@@ -18,8 +18,9 @@ ExportedObj/
 *.booproj
 *.svd
 
-bin/
+bin/Debug/*
 obj/
+!/bin/Debug/testcase.txt
 
 
 
