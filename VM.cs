@@ -14,6 +14,7 @@ namespace Compiler
         int sf;
         int current;
         InstructionSet set_;
+        int enter_;
 
         Stack<object> stack = new Stack<object>();
         Dictionary<string, object> symbols = new Dictionary<string, object>();
@@ -29,7 +30,17 @@ namespace Compiler
         public void Run(InstructionSet set)
         {
             set_ = set;
-            for (current = 0; current < set.Count;)
+            if (set.EnterPoint == -1)
+            {
+                Console.WriteLine("no entery point(main) founded!");
+                return;
+            }
+
+            stack.Push(-2);
+            current = set.GetLablePosition(set.EnterPoint);
+
+            //return;
+            while (current != -1)
             {
                 Instruction ins = set[current];
                 current = Execute(ins);
@@ -76,6 +87,8 @@ namespace Compiler
         {
             switch(ins.op)
             {
+                case Instruction.Op.Halt:
+                    return -1;
                 case Instruction.Op.Mov:
                     {
                         SetValue(ins.o0, ins.val);
@@ -150,6 +163,21 @@ namespace Compiler
                         symbols[(string)ins.val] = a;
                     }
                     return current + 1;
+                case Instruction.Op.Call:
+                    {
+                        stack.Push(current);
+                    }
+                    return set_.GetLablePosition(ins.i4);
+                case Instruction.Op.Ret:
+                    {
+                        int ps = (int)stack.Pop();
+                        int i = ins.i4;
+                        while(i-- > 0)
+                        {
+                            stack.Pop();
+                        }
+                        return ps + 1;
+                    }
                 case Instruction.Op.CMP:
                     {
                         object a = GetOper(ins.o0);
@@ -215,41 +243,41 @@ namespace Compiler
                     }
                     return current + 1;
                 case Instruction.Op.JMP:
-                    return set_.GetLable(ins.i4);
+                    return set_.GetLablePosition(ins.i4);
                 case Instruction.Op.JZ:
                     if (zf == 1)
                     {
-                        return set_.GetLable(ins.i4);
+                        return set_.GetLablePosition(ins.i4);
                     }
                     break;
                 case Instruction.Op.JNZ:
                     if (zf == 0)
                     {
-                        return set_.GetLable(ins.i4);
+                        return set_.GetLablePosition(ins.i4);
                     }
                     break;
                 case Instruction.Op.JA:
                     if (zf == 0 && sf == 0)
                     {
-                        return set_.GetLable(ins.i4);
+                        return set_.GetLablePosition(ins.i4);
                     }
                     break;
                 case Instruction.Op.JAE:
                     if (sf == 0 || zf == 1)
                     {
-                        return set_.GetLable(ins.i4);
+                        return set_.GetLablePosition(ins.i4);
                     }
                     break;
                 case Instruction.Op.JB:
                     if (zf == 0 && sf == 1)
                     {
-                        return set_.GetLable(ins.i4);
+                        return set_.GetLablePosition(ins.i4);
                     }
                     break;
                 case Instruction.Op.JBE:
                     if (sf == 1 || zf == 1)
                     {
-                        return set_.GetLable(ins.i4);
+                        return set_.GetLablePosition(ins.i4);
                     }
                     break;
 
@@ -270,6 +298,9 @@ namespace Compiler
                     return current + 1;
                 case Instruction.Op.LBE:
                     r0 = sf | zf;
+                    return current + 1;
+                case Instruction.Op.Put:
+                    Console.WriteLine(ins.val);
                     return current + 1;
                 default:
                     Error("not valid instructon {0}", Enum.GetName(typeof(Instruction.Op), ins.op));

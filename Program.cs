@@ -61,7 +61,7 @@ namespace Compiler
 
             lex.Accept(str);
             InstructionSet set = paser.Parse(lex);
-            set.Print();
+            set.Print(true);
             vm.Run(set);
         }
 

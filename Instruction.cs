@@ -42,7 +42,10 @@ namespace Compiler
             LAE,
             LB,
             LBE,
-            Call
+            Call,
+            Ret,
+            Halt,
+            Put
         }
 
         public enum Oper
@@ -57,6 +60,10 @@ namespace Compiler
         public Oper o1;
         public object val;
         public int i4;
+        public float f4;
+        public short s2;
+        public char c1;
+
 
         override public string ToString()
         {

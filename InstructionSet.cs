@@ -11,6 +11,17 @@ namespace Compiler
         List<Instruction> list = new List<Instruction>();
         List<int> lables = new List<int>();
 
+        public int EnterPoint
+        {
+            get;
+            set;
+        }
+
+        public InstructionSet()
+        {
+            EnterPoint = -1;
+        }
+
         public int Count
         {
             get
@@ -27,7 +38,7 @@ namespace Compiler
             }
         }
 
-        public int GetLable(int l)
+        public int GetLablePosition(int l)
         {
             return lables[l];
         }
@@ -48,8 +59,18 @@ namespace Compiler
             lables[lable] = list.Count;
         }
 
-        public void Emit(Instruction ins)
+        public void Emit(Instruction.Op op)
         {
+            Instruction ins = new Instruction();
+            ins.op = op;
+            list.Add(ins);
+        }
+
+        public void EmitPut(string str)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.Put;
+            ins.val = str;
             list.Add(ins);
         }
 
@@ -272,6 +293,22 @@ namespace Compiler
             ins.op = Instruction.Op.TEST;
             ins.o0 = oper0;
             ins.o1 = oper1;
+            list.Add(ins);
+        }
+
+        public void EmitRet(int n)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.Ret;
+            ins.i4 = n;
+            list.Add(ins);
+        }
+
+        public void EmitCall(int lable)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.Call;
+            ins.i4 = lable;
             list.Add(ins);
         }
 

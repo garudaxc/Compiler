@@ -19,6 +19,7 @@ namespace Compiler
         RParenthesis,
         LBrace,
         RBrace,
+        Quote,
         Less,
         Great,
         Equal,
@@ -30,11 +31,15 @@ namespace Compiler
         And,
         Or,
         Semicolon,
+        Comma,
         If,
         Else,
         While,
         Break,
         Continue,
+        Function,
+        Return,
+        Print,
         //Bracket,
         End
     }
@@ -85,9 +90,9 @@ namespace Compiler
         }
 
         public static Token Not = new Token(TokenType.Not);
-        public static Token If = new Token(TokenType.If);
-        public static Token Else = new Token(TokenType.Else);
-        public static Token While = new Token(TokenType.While);
+        //public static Token If = new Token(TokenType.If);
+        //public static Token Else = new Token(TokenType.Else);
+        //public static Token While = new Token(TokenType.While);
         public static Token End = new Token(TokenType.End);
     }
 
@@ -99,8 +104,14 @@ namespace Compiler
         int cntChar_;
 
         static TokenInfo[] tokens = new TokenInfo[] {
+            new TokenInfo {s = "if", tok = new Token(TokenType.If)},
+            new TokenInfo {s = "else", tok = new Token(TokenType.Else)},
+            new TokenInfo {s = "while", tok = new Token(TokenType.While)},
             new TokenInfo {s = "break", tok = new Token(TokenType.Break)},
             new TokenInfo {s = "continue", tok = new Token(TokenType.Continue)},
+            new TokenInfo {s = "function", tok = new Token(TokenType.Function)},
+            new TokenInfo {s = "return", tok = new Token(TokenType.Return)},
+            new TokenInfo {s = "print", tok = new Token(TokenType.Print)},
             new TokenInfo {s = "<=", tok = new Token(TokenType.LessEqual)},
             new TokenInfo {s = ">=", tok = new Token(TokenType.GreatEqual)},
             new TokenInfo {s = "==", tok = new Token(TokenType.EqualEqual)},
@@ -119,6 +130,8 @@ namespace Compiler
             new TokenInfo {s = "<", tok = new Token(TokenType.Less)},
             new TokenInfo {s = "=", tok = new Token(TokenType.Equal)},
             new TokenInfo {s = ";", tok = new Token(TokenType.Semicolon)},
+            new TokenInfo {s = ",", tok = new Token(TokenType.Comma)},
+            new TokenInfo {s = "\"", tok = new Token(TokenType.Quote)},
         };
 
 
@@ -223,7 +236,6 @@ namespace Compiler
             return true;
         }
 
-
         public Token GetNextToken()
         {
             Token tok = Token.End;
@@ -261,27 +273,27 @@ namespace Compiler
                     cntChar_ = j;
                     break;
                 }
-                else if (s.Equals("if"))
-                {
-                    tok = Token.If;
-                    cntString_++;
-                    cntChar_ = 0;
-                    break;
-                }
-                else if (s.Equals("else"))
-                {
-                    tok = Token.Else;
-                    cntString_++;
-                    cntChar_ = 0;
-                    break;
-                }
-                else if (s.Equals("while"))
-                {
-                    tok = Token.While;
-                    cntString_++;
-                    cntChar_ = 0;
-                    break;
-                }
+                //else if (s.Equals("if"))
+                //{
+                //    tok = Token.If;
+                //    cntString_++;
+                //    cntChar_ = 0;
+                //    break;
+                //}
+                //else if (s.Equals("else"))
+                //{
+                //    tok = Token.Else;
+                //    cntString_++;
+                //    cntChar_ = 0;
+                //    break;
+                //}
+                //else if (s.Equals("while"))
+                //{
+                //    tok = Token.While;
+                //    cntString_++;
+                //    cntChar_ = 0;
+                //    break;
+                //}
                 else
                 {
                     if (IsSymbol(s, cntChar_, out j))
