@@ -5,12 +5,23 @@ using System.Threading.Tasks;
 
 namespace Compiler
 {
+    class FunctionInfo
+    {
+        public string name;
+        public int numParam;
+        public int lable;
+    }
+
+    class DummyInfo
+    {
+    }
+
     class LLPaser
     {
         Lexer lex_;
         Token currentToken_;
         InstructionSet set_;
-        HashSet<string> symbols_;
+        Dictionary<string, object> symbols_;
 
         public LLPaser()
         {
@@ -34,6 +45,22 @@ namespace Compiler
                 Error("wrong token type {0} expect {1}", currentToken_.TypeName, Enum.GetName(typeof(TokenType), type));
             }            
         }
+        
+        void Declration()
+        {
+            switch(currentToken_.Type)
+            {
+                case TokenType.Variable:
+                    AssignmentOrCall();
+                    break;
+                case TokenType.Function:
+                    Function();
+                    break;
+                default:
+                    Error("wrong token {0} expect declration", currentToken_.TypeName);
+                    break;
+            }
+        }
 
         void Block(int start, int end)
         {
@@ -50,7 +77,7 @@ namespace Compiler
             switch (currentToken_.Type)
             {
                 case TokenType.Variable:
-                    Assignment();
+                    AssignmentOrCall();
                     break;
                 case TokenType.If:
                     IfStatement(start, end);
@@ -68,21 +95,123 @@ namespace Compiler
                     Eat(TokenType.Semicolon);
                     set_.EmitJmp(end);
                     break;
+                case TokenType.Function:
+                    Eat(TokenType.Function);
+                    break;
+                case TokenType.Return:
+                    Eat(TokenType.Return);
+
+                    if (currentToken_.Type != TokenType.Semicolon)
+                    {
+                        E();
+                    }
+
+                    set_.EmitRet(0);
+                    Eat(TokenType.Semicolon);
+                    break;
+                case TokenType.Print:
+                    Eat(TokenType.Print);
+                    Eat(TokenType.Quote);
+                    {
+                        string s = currentToken_.str;
+                        set_.EmitPut(s);
+                    }
+                    Eat(TokenType.Variable);
+                    Eat(TokenType.Quote);
+                    Eat(TokenType.Semicolon);
+                    break;
                 default:
                     Error("wrong token {0} expect statement", currentToken_.TypeName);
                     break;
             }
         }
 
-        void Assignment()
+        void AssignmentOrCall()
         {
             string var = currentToken_.str;
             Eat(TokenType.Variable);
-            Eat(TokenType.Equal);
-            E();
-            set_.EmitStore(var, Instruction.Oper.R0); 
-            Eat(TokenType.Semicolon);
-            symbols_.Add(var);
+
+            switch(currentToken_.Type)
+            {
+                case TokenType.Equal:
+                    Eat(TokenType.Equal);
+                    E();
+                    set_.EmitStore(var, Instruction.Oper.R0);
+                    Eat(TokenType.Semicolon);
+                    if (!symbols_.ContainsKey(var))
+                    {
+                        symbols_.Add(var, null);
+                    }
+                    break;
+                case TokenType.LParenthesis:
+                    FunctionCall(var);
+                    Eat(TokenType.Semicolon);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void FunctionCall(string name)
+        {
+            Eat(TokenType.LParenthesis);
+
+            int numParam = 0;
+            while (currentToken_.Type != TokenType.RParenthesis)
+            {
+                E();
+                set_.EmitPush(Instruction.Oper.R0);
+                numParam++;
+                if(currentToken_.Type == TokenType.Comma)
+                {
+                    Eat(TokenType.Comma);
+                }
+            }
+            // push parameter
+            Eat(TokenType.RParenthesis);
+            object obj;
+            if (!symbols_.TryGetValue(name, out obj))
+            {
+                Error("function {0} not defined!", name);
+            }
+            FunctionInfo info = obj as FunctionInfo;
+            set_.EmitCall(info.lable);
+        }
+
+        void Function()
+        {
+            Eat(TokenType.Function);
+            string name = currentToken_.str;
+            if (symbols_.ContainsKey(name))
+            {
+                Error("funtion {0} redefine", name);
+            }
+
+            int lable = set_.NewLable();
+            set_.AddLable(lable);
+
+            FunctionInfo info = new FunctionInfo();
+            info.name = name;
+            info.numParam = 0;
+            info.lable = lable;
+
+            symbols_.Add(name, info);
+            if (name == "main")
+            {
+                set_.EnterPoint = lable;
+            }
+
+            Eat(TokenType.Variable);
+            Eat(TokenType.LParenthesis);
+            // parameter list
+            Eat(TokenType.RParenthesis);
+            Block(-1, -1);
+            set_.EmitRet(0);
+        }
+
+        void ParameterList()
+        {
+
         }
 
         void IfStatement(int start, int end)
@@ -330,12 +459,23 @@ namespace Compiler
                     Eat(TokenType.Number);
                     break;
                 case TokenType.Variable:
-                    if (!symbols_.Contains(currentToken_.str))
                     {
-                        Error("symbol {0} has not been defined!", currentToken_.str);
+                        string name = currentToken_.str;
+                        if (!symbols_.ContainsKey(name))
+                        {
+                            Error("symbol {0} has not been defined!", name);
+                        }
+                        Eat(TokenType.Variable);
+
+                        if (currentToken_.Type == TokenType.LParenthesis)
+                        {
+                            FunctionCall(name);
+                        }
+                        else
+                        {
+                            set_.EmitLoad(Instruction.Oper.R0, name);
+                        }
                     }
-                    set_.EmitLoad(Instruction.Oper.R0, currentToken_.str);
-                    Eat(TokenType.Variable);                                        
                     break;
                 case TokenType.LParenthesis:
                     Eat(TokenType.LParenthesis); 
@@ -353,11 +493,16 @@ namespace Compiler
         public InstructionSet Parse(Lexer lex)
         {
             set_ = new InstructionSet();
-            symbols_ = new HashSet<string>();
+            symbols_ = new Dictionary<string, object>();
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
-            Block(-1, -1);
 
+            while(currentToken_.Type != TokenType.End)
+            {
+                Declration();
+            }
+
+            //Block(-1, -1);
             //Console.WriteLine(result.ToString() + " ok");
 
             return set_;
