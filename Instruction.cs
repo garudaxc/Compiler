@@ -13,6 +13,8 @@ namespace Compiler
             Mov,
             Load,
             Store,
+            LoadArray,
+            StoreArray,
             Add,
             Sub,
             Mul,
@@ -45,7 +47,7 @@ namespace Compiler
             Call,
             Ret,
             Halt,
-            Put
+            PInvoke,
         }
 
         public enum Oper
@@ -75,15 +77,28 @@ namespace Compiler
                 return s;
             }
 
-            if (op == Op.Mov || op == Op.Store || op == Op.Load)
+            if (op == Op.Mov)
             {
                 s = string.Format("{0}\t{1}, {2}", Enum.GetName(typeof(Op), op),
                     Enum.GetName(typeof(Oper), o0), val);
             } 
+            else if (op == Op.Store || op == Op.Load)
+            {
+                s = string.Format("{0}\t{1}, sp${2}", Enum.GetName(typeof(Op), op),
+                    Enum.GetName(typeof(Oper), o0), i4);
+            }
             else if(op == Op.Push || op == Op.Pop)
             {
                 s = string.Format("{0}\t{1}", Enum.GetName(typeof(Op), op),
                     Enum.GetName(typeof(Oper), o0));
+            }
+            else if(op == Op.PInvoke)
+            {
+                s = string.Format("{0}\t{1}", Enum.GetName(typeof(Op), op), val);
+            }
+            else if (op == Op.Ret)
+            {
+                s = string.Format("{0}\t{1}", Enum.GetName(typeof(Op), op), i4);
             }
             else
             {

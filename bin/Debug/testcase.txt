@@ -1,29 +1,46 @@
 
 
-function bar()
+function fun(x)
 {
-	print "bar";
-	return 10 + 3;
+	return x * x;
+}
+
+function bar(a)
+{
+	print("bar");
+	return 10 + 3 + a;
 }
 
 function foo()
 {
-	print "foo";
-	x = bar() - 6;
-	print "foo1";
+	c  = 2;
+	d = 3;
+
+	e = bar(2) + bar(3);
+
+	print(e);
 
 	return  123;
-	print "foo2";
+	print("foo2");
 }
 
 
 function main()
 {
-a = -5;
+a = 1;
 //b = 12+(2.3-43.)*a/8;
 //if (1==2&&true)
 
-print "aaabbb";
+w = [1, 2];
+append(w, 5);
+w[w[0]] = -3;
+print(w);
+
+a = w[a];
+print(a);
+
+s = "aaabbbc";
+print(strlen(s));
 
 y = foo();
 
@@ -42,7 +59,6 @@ else {
 }
 a = a + 2;
 
-print "cccddd";
 b = 1;
 while a < 0
 {

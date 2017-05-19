@@ -59,20 +59,14 @@ namespace Compiler
             lables[lable] = list.Count;
         }
 
-        public void Emit(Instruction.Op op)
+        public void EmitNativeInvoke(string name)
         {
             Instruction ins = new Instruction();
-            ins.op = op;
+            ins.op = Instruction.Op.PInvoke;
+            ins.val = name;
             list.Add(ins);
         }
 
-        public void EmitPut(string str)
-        {
-            Instruction ins = new Instruction();
-            ins.op = Instruction.Op.Put;
-            ins.val = str;
-            list.Add(ins);
-        }
 
         public void EmitMove(Instruction.Oper oper, object constValue)
         {
@@ -82,22 +76,40 @@ namespace Compiler
             ins.val = constValue;
             list.Add(ins);
         }
-
-        public void EmitLoad(Instruction.Oper oper, string var)
+        
+        public void EmitLoad(Instruction.Oper oper, int offset)
         {
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Load;
             ins.o0 = oper;
-            ins.val = var;
-            list.Add(ins);            
+            ins.i4 = offset;
+            list.Add(ins);
         }
 
-        public void EmitStore(string var, Instruction.Oper oper)
+        public void EmitStore(Instruction.Oper oper, int offset)
         {
             Instruction ins = new Instruction();
             ins.op = Instruction.Op.Store;
             ins.o0 = oper;
-            ins.val = var;
+            ins.i4 = offset;
+            list.Add(ins);
+        }
+
+        public void EmitLoadArray(Instruction.Oper oper, int offset)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.LoadArray;
+            ins.o0 = oper;
+            ins.i4 = offset;
+            list.Add(ins);
+        }
+
+        public void EmitStoreArray(Instruction.Oper oper, int offset)
+        {
+            Instruction ins = new Instruction();
+            ins.op = Instruction.Op.StoreArray;
+            ins.o0 = oper;
+            ins.i4 = offset;
             list.Add(ins);
         }
 
@@ -125,15 +137,6 @@ namespace Compiler
             ins.o1 = oper1;
             list.Add(ins);
         }
-
-        //public void EmitSub(Instruction.Oper oper0, Instruction.Oper oper1)
-        //{
-        //    Instruction ins = new Instruction();
-        //    ins.op = Instruction.Op.Sub;
-        //    ins.o0 = oper0;
-        //    ins.o1 = oper1;
-        //    list.Add(ins);
-        //}
 
         public void EmitMul(Instruction.Oper oper0, Instruction.Oper oper1)
         {

@@ -5,15 +5,46 @@ using System.Threading.Tasks;
 
 namespace Compiler
 {
-    class FunctionInfo
+    class SymbolInfo
     {
+        public enum SymbolType
+        {
+            Variable,
+            Function,
+        }
+
+        public SymbolType type;
         public string name;
+    }
+
+    class FunctionInfo : SymbolInfo
+    {
+        public FunctionInfo()
+        {
+            type = SymbolType.Function;
+        }
+
         public int numParam;
+        public int numSymbol;
         public int lable;
     }
 
-    class DummyInfo
+    class VariableInfo : SymbolInfo
     {
+        public enum ValueType
+        {
+            Integer,
+            Float,
+            String,
+            Array,
+        }
+
+        public VariableInfo()
+        {
+            type = SymbolType.Variable;
+        }
+
+        public ValueType valueType;
     }
 
     class LLPaser
@@ -21,7 +52,8 @@ namespace Compiler
         Lexer lex_;
         Token currentToken_;
         InstructionSet set_;
-        Dictionary<string, object> symbols_;
+
+        SymbolTable table_;
 
         public LLPaser()
         {
@@ -34,7 +66,7 @@ namespace Compiler
             throw new Exception();
         }
         
-        void Eat(TokenType type)
+        void Accept(TokenType type)
         {
             if (currentToken_.Type == type)
             {
@@ -64,12 +96,12 @@ namespace Compiler
 
         void Block(int start, int end)
         {
-            Eat(TokenType.LBrace);
+            Accept(TokenType.LBrace);
             while (currentToken_.Type != TokenType.RBrace)
             {
                 Statement(start, end);
             }
-            Eat(TokenType.RBrace);
+            Accept(TokenType.RBrace);
         }
 
         void Statement(int start, int end)
@@ -86,39 +118,23 @@ namespace Compiler
                     WhileStatement();
                     break;
                 case TokenType.Continue:
-                    Eat(TokenType.Continue);
-                    Eat(TokenType.Semicolon);
+                    Accept(TokenType.Continue);
+                    Accept(TokenType.Semicolon);
                     set_.EmitJmp(start);
                     break;
                 case TokenType.Break:
-                    Eat(TokenType.Break);
-                    Eat(TokenType.Semicolon);
+                    Accept(TokenType.Break);
+                    Accept(TokenType.Semicolon);
                     set_.EmitJmp(end);
                     break;
-                case TokenType.Function:
-                    Eat(TokenType.Function);
-                    break;
                 case TokenType.Return:
-                    Eat(TokenType.Return);
-
+                    Accept(TokenType.Return);
                     if (currentToken_.Type != TokenType.Semicolon)
                     {
-                        E();
+                        Expr();
                     }
-
-                    set_.EmitRet(0);
-                    Eat(TokenType.Semicolon);
-                    break;
-                case TokenType.Print:
-                    Eat(TokenType.Print);
-                    Eat(TokenType.Quote);
-                    {
-                        string s = currentToken_.str;
-                        set_.EmitPut(s);
-                    }
-                    Eat(TokenType.Variable);
-                    Eat(TokenType.Quote);
-                    Eat(TokenType.Semicolon);
+                    set_.EmitRet(table_.NumSymbol);
+                    Accept(TokenType.Semicolon);
                     break;
                 default:
                     Error("wrong token {0} expect statement", currentToken_.TypeName);
@@ -126,26 +142,90 @@ namespace Compiler
             }
         }
 
+        void RightRefValue()
+        {
+            if (currentToken_.Type == TokenType.LBracket)
+            {
+                Accept(TokenType.LBracket);
+
+                int numItem = 0;
+                while (currentToken_.Type != TokenType.RBracket)
+                {
+                    Expr();
+                    set_.EmitPush(Instruction.Oper.R0);
+                    numItem++;
+                    if (currentToken_.Type == TokenType.Comma)
+                    {
+                        Accept(TokenType.Comma);
+                    }
+                }
+
+                // item list
+                Accept(TokenType.RBracket);
+
+                // pcall new array
+                set_.EmitMove(Instruction.Oper.R0, numItem);
+                set_.EmitPush(Instruction.Oper.R0);
+                set_.EmitNativeInvoke("new_array");
+            }
+            else
+            {
+                Expr();
+            }
+        }
+
         void AssignmentOrCall()
         {
             string var = currentToken_.str;
-            Eat(TokenType.Variable);
+            Accept(TokenType.Variable);                
 
             switch(currentToken_.Type)
             {
                 case TokenType.Equal:
-                    Eat(TokenType.Equal);
-                    E();
-                    set_.EmitStore(var, Instruction.Oper.R0);
-                    Eat(TokenType.Semicolon);
-                    if (!symbols_.ContainsKey(var))
+                    if (!table_.Contains(var))
                     {
-                        symbols_.Add(var, null);
+                        VariableInfo info = new VariableInfo();
+                        info.name = var;
+
+                        table_.Add(var, info);
+                        set_.EmitPush(Instruction.Oper.SP);               
                     }
+
+                    Accept(TokenType.Equal);
+                    
+                    RightRefValue();
+
+                    int offset = table_.GetSymbolOffset(var);
+                    //set_.EmitStore(var, Instruction.Oper.R0);
+                    set_.EmitStore(Instruction.Oper.R0, offset);
+
+                    Accept(TokenType.Semicolon);
+
                     break;
                 case TokenType.LParenthesis:
                     FunctionCall(var);
-                    Eat(TokenType.Semicolon);
+                    Accept(TokenType.Semicolon);
+                    break;
+                case TokenType.LBracket:
+                    {
+                        Accept(TokenType.LBracket);
+                        Expr();
+                        set_.EmitPush(Instruction.Oper.R0);
+                        Accept(TokenType.RBracket);
+
+                        Accept(TokenType.Equal);
+
+                        RightRefValue();
+                        set_.EmitPush(Instruction.Oper.R0);
+                        set_.EmitPop(Instruction.Oper.R1);
+                        set_.EmitPop(Instruction.Oper.R0);
+
+                        offset = table_.GetSymbolOffset(var);
+                        set_.EmitStoreArray(Instruction.Oper.R1, offset);
+
+                        Accept(TokenType.Semicolon);
+                    }
+
                     break;
                 default:
                     break;
@@ -154,35 +234,45 @@ namespace Compiler
 
         void FunctionCall(string name)
         {
-            Eat(TokenType.LParenthesis);
+            Accept(TokenType.LParenthesis);
 
             int numParam = 0;
             while (currentToken_.Type != TokenType.RParenthesis)
             {
-                E();
+                Expr();
                 set_.EmitPush(Instruction.Oper.R0);
                 numParam++;
                 if(currentToken_.Type == TokenType.Comma)
                 {
-                    Eat(TokenType.Comma);
+                    Accept(TokenType.Comma);
                 }
             }
             // push parameter
-            Eat(TokenType.RParenthesis);
+            Accept(TokenType.RParenthesis);
             object obj;
-            if (!symbols_.TryGetValue(name, out obj))
+
+            if ((obj = table_.GetSymbol(name)) == null)
             {
-                Error("function {0} not defined!", name);
+                //Error("function {0} not defined!", name);
+                set_.EmitNativeInvoke(name);
+                return;
             }
+
             FunctionInfo info = obj as FunctionInfo;
+            if (numParam != info.numParam)
+            {
+                Error("function call {0} parameter number not match {1} expect {2}", name, numParam, info.numParam);
+            }
             set_.EmitCall(info.lable);
         }
 
+
         void Function()
         {
-            Eat(TokenType.Function);
+            Accept(TokenType.Function);
             string name = currentToken_.str;
-            if (symbols_.ContainsKey(name))
+
+            if (table_.Contains(name))
             {
                 Error("funtion {0} redefine", name);
             }
@@ -192,32 +282,60 @@ namespace Compiler
 
             FunctionInfo info = new FunctionInfo();
             info.name = name;
-            info.numParam = 0;
             info.lable = lable;
 
-            symbols_.Add(name, info);
+            //symbols_.Add(name, info);
+            table_.AddGlobal(name, info);
+
             if (name == "main")
             {
                 set_.EnterPoint = lable;
             }
 
-            Eat(TokenType.Variable);
-            Eat(TokenType.LParenthesis);
+            Accept(TokenType.Variable);
+
+            table_.PushBarrier();
+
+            Accept(TokenType.LParenthesis);
             // parameter list
-            Eat(TokenType.RParenthesis);
+            info.numParam = FormalParameter();
+            table_.SetNumFormalParam(info.numParam);
+            Accept(TokenType.RParenthesis);
             Block(-1, -1);
-            set_.EmitRet(0);
+
+            info.numSymbol = table_.NumSymbol;
+            set_.EmitRet(info.numSymbol);
+
+            table_.PopBarrier();
         }
 
-        void ParameterList()
+        int FormalParameter()
         {
+            int numParam = 0;
+            while(currentToken_.Type != TokenType.RParenthesis)
+            {
+                string name = currentToken_.str;
+                Accept(TokenType.Variable);
+                if (table_.Contains(name))
+                {
+                    Error("already have symbol {0}", name);
+                }
 
+                table_.Add(name, null);
+                numParam++;
+                // table add
+                if (currentToken_.Type == TokenType.Comma)
+                {
+                    Accept(TokenType.Comma);
+                }
+            }
+            return numParam;
         }
 
         void IfStatement(int start, int end)
         {
             int lf = set_.NewLable();
-            Eat(TokenType.If);
+            Accept(TokenType.If);
             BExpression();
             set_.EmitTest(Instruction.Oper.R0, Instruction.Oper.R0);
             set_.EmitJZ(lf);
@@ -230,7 +348,7 @@ namespace Compiler
         {
             int start = set_.NewLable();
             int end = set_.NewLable();
-            Eat(TokenType.While);
+            Accept(TokenType.While);
             set_.AddLable(start);
             BExpression();
             set_.EmitTest(Instruction.Oper.R0, Instruction.Oper.R0);
@@ -248,7 +366,7 @@ namespace Compiler
                     {
                         int le = set_.NewLable();
                         set_.EmitJmp(le);
-                        Eat(TokenType.Else);
+                        Accept(TokenType.Else);
                         set_.AddLable(lf);
                         Block(start, end);
                         return le;
@@ -269,7 +387,7 @@ namespace Compiler
             switch (currentToken_.Type)
             {
                 case TokenType.Or:
-                    Eat(TokenType.Or);
+                    Accept(TokenType.Or);
                     set_.EmitPush(Instruction.Oper.R0);
                     BTerm();
                     BExpressionPrime();
@@ -292,7 +410,7 @@ namespace Compiler
             switch (currentToken_.Type)
             {
                 case TokenType.And:
-                    Eat(TokenType.And);
+                    Accept(TokenType.And);
                     set_.EmitPush(Instruction.Oper.R0);
                     BFactor();
                     BTermPrime();
@@ -310,11 +428,11 @@ namespace Compiler
             switch (currentToken_.Type)
             {
                 case TokenType.Not:
-                    Eat(TokenType.Not);
+                    Accept(TokenType.Not);
                     BFactor();
                     break;
                 default:
-                    E();
+                    Expr();
                     InequalOp();
                     break;
             }
@@ -325,49 +443,49 @@ namespace Compiler
             switch (currentToken_.Type)
             {
                 case TokenType.EqualEqual:
-                    Eat(TokenType.EqualEqual);
+                    Accept(TokenType.EqualEqual);
                     set_.EmitPush(Instruction.Oper.R0);
-                    E();
+                    Expr();
                     set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
                     set_.EmitLZ();
                     break;
                 case TokenType.NotEqual:
-                    Eat(TokenType.NotEqual);
+                    Accept(TokenType.NotEqual);
                     set_.EmitPush(Instruction.Oper.R0);
-                    E();
+                    Expr();
                     set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
                     set_.EmitLNZ();
                     break;
                 case TokenType.Less:
-                    Eat(TokenType.Less);
+                    Accept(TokenType.Less);
                     set_.EmitPush(Instruction.Oper.R0);
-                    E();
+                    Expr();
                     set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
                     set_.EmitLB();
                     break;
                 case TokenType.LessEqual:
-                    Eat(TokenType.LessEqual);
+                    Accept(TokenType.LessEqual);
                     set_.EmitPush(Instruction.Oper.R0);
-                    E();
+                    Expr();
                     set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
                     set_.EmitLBE();
                     break;
                 case TokenType.Great:
-                    Eat(TokenType.Great);
+                    Accept(TokenType.Great);
                     set_.EmitPush(Instruction.Oper.R0);
-                    E();
+                    Expr();
                     set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
                     set_.EmitLA();
                     break;
                 case TokenType.GreatEqual:
-                    Eat(TokenType.GreatEqual);
+                    Accept(TokenType.GreatEqual);
                     set_.EmitPush(Instruction.Oper.R0);
-                    E();
+                    Expr();
                     set_.EmitCmp(Instruction.Oper.SP, Instruction.Oper.R0);
                     set_.EmitPop(Instruction.Oper.SP);
                     set_.EmitLAE();
@@ -378,7 +496,7 @@ namespace Compiler
 
         }
 
-        void E()
+        void Expr()
         {
             T();
             EPrime();
@@ -389,7 +507,7 @@ namespace Compiler
             switch(currentToken_.Type)
             {
                 case TokenType.Add:
-                    Eat(TokenType.Add); 
+                    Accept(TokenType.Add); 
                     set_.EmitPush(Instruction.Oper.R0);
                     T();
                     set_.EmitAdd(Instruction.Oper.R0, Instruction.Oper.SP);
@@ -397,7 +515,7 @@ namespace Compiler
                     EPrime();
                     break;
                 case TokenType.Minus:
-                    Eat(TokenType.Minus);
+                    Accept(TokenType.Minus);
                     set_.EmitPush(Instruction.Oper.R0);
                     T();
                     set_.EmitNeg(Instruction.Oper.R0);
@@ -423,14 +541,14 @@ namespace Compiler
             {
                 case TokenType.Div:
                     set_.EmitPush(Instruction.Oper.R0);
-                    Eat(TokenType.Div); 
+                    Accept(TokenType.Div); 
                     F();
                     set_.EmitDiv(Instruction.Oper.R0, Instruction.Oper.SP);
                     set_.EmitPop(Instruction.Oper.SP);
                     TPrime();
                     break;
                 case TokenType.Multiply:
-                    Eat(TokenType.Multiply); 
+                    Accept(TokenType.Multiply); 
                     set_.EmitPush(Instruction.Oper.R0);
                     F(); 
                     set_.EmitMul(Instruction.Oper.R0, Instruction.Oper.SP);
@@ -447,53 +565,65 @@ namespace Compiler
             switch(currentToken_.Type)
             {
                 case TokenType.Minus:
-                    Eat(TokenType.Minus);
+                    Accept(TokenType.Minus);
                     F();
-                    //set_.EmitMove(Instruction.Oper.R1, 0);
-                    //set_.EmitSub(Instruction.Oper.R1, Instruction.Oper.R0);
+
                     set_.EmitNeg(Instruction.Oper.R0);
                     break;
                 case TokenType.Number:
-                    int val = currentToken_.i4;
-                    set_.EmitMove(Instruction.Oper.R0, val);
-                    Eat(TokenType.Number);
-                    break;
+                    {
+                        int val = currentToken_.i4;
+                        set_.EmitMove(Instruction.Oper.R0, val);
+                        Accept(TokenType.Number);
+                        break;
+                    }
+                case TokenType.String:
+                    {
+                        string val = currentToken_.str;
+                        set_.EmitMove(Instruction.Oper.R0, val);
+                        Accept(TokenType.String);
+                        break;
+                    }
                 case TokenType.Variable:
                     {
                         string name = currentToken_.str;
-                        if (!symbols_.ContainsKey(name))
-                        {
-                            Error("symbol {0} has not been defined!", name);
-                        }
-                        Eat(TokenType.Variable);
+                        Accept(TokenType.Variable);
 
                         if (currentToken_.Type == TokenType.LParenthesis)
                         {
                             FunctionCall(name);
                         }
+                        else if(currentToken_.Type == TokenType.LBracket)
+                        {
+                            Accept(TokenType.LBracket);
+                            Expr();
+                            Accept(TokenType.RBracket);
+                            int offset = table_.GetSymbolOffset(name);
+                            set_.EmitLoadArray(Instruction.Oper.R0, offset);
+                        }
                         else
                         {
-                            set_.EmitLoad(Instruction.Oper.R0, name);
+                            int offset = table_.GetSymbolOffset(name);
+                            set_.EmitLoad(Instruction.Oper.R0, offset);
                         }
                     }
                     break;
                 case TokenType.LParenthesis:
-                    Eat(TokenType.LParenthesis); 
+                    Accept(TokenType.LParenthesis); 
                     T();
                     EPrime(); 
-                    Eat(TokenType.RParenthesis);
+                    Accept(TokenType.RParenthesis);
                     break;
                 default:
                     Error("wrong token {0} expect number/left parentthesis", currentToken_.TypeName);
                     break;
-
             }
         }
 
         public InstructionSet Parse(Lexer lex)
         {
             set_ = new InstructionSet();
-            symbols_ = new Dictionary<string, object>();
+            table_ = new SymbolTable();
             lex_ = lex;
             currentToken_ = lex_.GetNextToken();
 

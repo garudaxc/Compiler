@@ -1,11 +1,86 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Compiler
 {
+    static class ExtentClass
+    {
+        public static void Push(this List<object> list, object obj)
+        {
+            list.Add(obj);
+        }
+
+        public static object Pop(this List<object> list)
+        {
+            object obj = list[list.Count - 1];
+            list.RemoveAt(list.Count - 1);
+            return obj;
+        }
+
+        public static void Pop(this List<object> list, int count)
+        {
+            if (count == 0)
+            {
+                return;
+            }
+            list.RemoveRange(list.Count - count, count);
+        }
+        
+        public static object Peek(this List<object> list)
+        {
+            object obj = list[list.Count - 1];
+            return obj;
+        }
+    }
+
+    class NativeInvok
+    {
+        public static void StringLength(VM vm)
+        {
+            string s = (string)vm.PopStack();
+            vm.PushStack(s.Length);
+        }
+
+        public static void Print(VM vm)
+        {
+            object o = vm.PopStack();
+            if (o.GetType().IsGenericType && o.GetType() == typeof(List<object>))
+            {
+                List<object> l = (List<object>)o;
+                Console.Write("[");
+                l.ForEach((i) => Console.Write(i + ", "));
+                Console.WriteLine("] size " + l.Count);
+            }
+            else
+            {
+                Console.WriteLine(o);
+            }
+            vm.PushStack(0);
+        }
+
+        public static void ArrayAppend(VM vm)
+        {
+            object o = vm.PopStack();
+            List<object> list = (List<object>)vm.PopStack();
+            list.Add(o);
+            vm.PushStack(list);
+        }
+
+        public static void NewArray(VM vm)
+        {
+            int size = (int)vm.PopStack();
+            List<object> list = new List<object>();
+            while(size-- > 0)
+            {
+                list.Insert(0, vm.PopStack());
+            }
+            vm.PushStack(list);
+        }
+
+    }
+
     class VM
     {
         object r0;
@@ -14,11 +89,42 @@ namespace Compiler
         int sf;
         int current;
         InstructionSet set_;
-        int enter_;
+        int stackFrame = 0;
 
-        Stack<object> stack = new Stack<object>();
-        Dictionary<string, object> symbols = new Dictionary<string, object>();
+        List<object> stack = new List<object>();
 
+        // global storage
+
+        Dictionary<string, Action<VM>> nativeInvoke = new Dictionary<string, Action<VM>>();
+
+        public object PopStack()
+        {
+            object o = stack.Pop();
+            return o;
+        }
+
+        public void PushStack(object o)
+        {
+            stack.Push(o);
+        }
+
+        public VM()
+        {
+            InitNativeInvoke();
+        }
+
+        public void AddNativeInvoke(string name, Action<VM> func)
+        {
+            nativeInvoke.Add(name, func);
+        }
+
+        void InitNativeInvoke()
+        {
+            AddNativeInvoke("strlen", NativeInvok.StringLength);
+            AddNativeInvoke("print", NativeInvok.Print);
+            AddNativeInvoke("append", NativeInvok.ArrayAppend);
+            AddNativeInvoke("new_array", NativeInvok.NewArray);
+        }
         
         void Error(string fmt, params Object[] args)
         {
@@ -36,7 +142,11 @@ namespace Compiler
                 return;
             }
 
+            stackFrame = -1;
+            stack.Push(stackFrame);
             stack.Push(-2);
+            stackFrame = stack.Count - 1;
+
             current = set.GetLablePosition(set.EnterPoint);
 
             //return;
@@ -46,11 +156,11 @@ namespace Compiler
                 current = Execute(ins);
             }
 
-            Console.WriteLine("run result");
-            foreach(var p in symbols)
-            {
-                Console.WriteLine("{0} = {1}", p.Key, p.Value);
-            }
+            //Console.WriteLine("run result");
+            //foreach(var p in symbols)
+            //{
+            //    Console.WriteLine("{0} = {1}", p.Key, p.Value);
+            //}
         }
 
         object GetOper(Instruction.Oper oper)
@@ -148,36 +258,59 @@ namespace Compiler
                     return current + 1;
                 case Instruction.Op.Load:
                     {
-                        object val;
-                        if (!symbols.TryGetValue((string)ins.val, out val))
-                        {
-                            Error("can not find varble {0}", ins.val);
-                        }
-
+                        object val = stack[stackFrame + ins.i4];
                         SetValue(ins.o0, val);
                     }
                     return current + 1;
                 case Instruction.Op.Store:
                     {
-                        object a = GetOper(ins.o0);
-                        symbols[(string)ins.val] = a;
+                        object val = GetOper(ins.o0);
+                        stack[stackFrame + ins.i4] = val;
+                    }
+                    return current + 1;
+                case Instruction.Op.LoadArray:
+                    {
+                        List<object> val = (List<object>)stack[stackFrame + ins.i4];
+                        int index = (int)GetOper(Instruction.Oper.R0);
+                        SetValue(ins.o0, val[index]);
+                    }
+                    return current + 1;
+                case Instruction.Op.StoreArray:
+                    {
+                        List<object> val = (List<object>)stack[stackFrame + ins.i4];
+                        int index = (int)GetOper(Instruction.Oper.R0);
+                        val[index] = GetOper(ins.o0);
                     }
                     return current + 1;
                 case Instruction.Op.Call:
                     {
+                        stack.Push(stackFrame);
                         stack.Push(current);
+                        stackFrame = stack.Count - 1;
                     }
                     return set_.GetLablePosition(ins.i4);
                 case Instruction.Op.Ret:
                     {
-                        int ps = (int)stack.Pop();
+                        int ps = (int)stack[stackFrame];
+                        stackFrame = (int)stack[stackFrame - 1];
                         int i = ins.i4;
-                        while(i-- > 0)
-                        {
-                            stack.Pop();
-                        }
+                        stack.Pop(i + 2);
+
                         return ps + 1;
                     }
+                case Instruction.Op.PInvoke:
+                    {
+                        string name = (string)ins.val;
+                        Action<VM> func;
+                        if (!nativeInvoke.TryGetValue(name, out func))
+                        {
+                            Error("can not find function {0}", name);
+                        }
+                        func(this);
+                        r0 = stack.Pop();
+                    }
+
+                    return current + 1;
                 case Instruction.Op.CMP:
                     {
                         object a = GetOper(ins.o0);
@@ -298,9 +431,6 @@ namespace Compiler
                     return current + 1;
                 case Instruction.Op.LBE:
                     r0 = sf | zf;
-                    return current + 1;
-                case Instruction.Op.Put:
-                    Console.WriteLine(ins.val);
                     return current + 1;
                 default:
                     Error("not valid instructon {0}", Enum.GetName(typeof(Instruction.Op), ins.op));

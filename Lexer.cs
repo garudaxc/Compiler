@@ -15,11 +15,14 @@ namespace Compiler
         Multiply,
         Div,
         Number,
+        String,
         LParenthesis,
         RParenthesis,
+        LBracket,
+        RBracket,
         LBrace,
         RBrace,
-        Quote,
+        //Quote,
         Less,
         Great,
         Equal,
@@ -39,8 +42,6 @@ namespace Compiler
         Continue,
         Function,
         Return,
-        Print,
-        //Bracket,
         End
     }
 
@@ -90,9 +91,6 @@ namespace Compiler
         }
 
         public static Token Not = new Token(TokenType.Not);
-        //public static Token If = new Token(TokenType.If);
-        //public static Token Else = new Token(TokenType.Else);
-        //public static Token While = new Token(TokenType.While);
         public static Token End = new Token(TokenType.End);
     }
 
@@ -111,7 +109,6 @@ namespace Compiler
             new TokenInfo {s = "continue", tok = new Token(TokenType.Continue)},
             new TokenInfo {s = "function", tok = new Token(TokenType.Function)},
             new TokenInfo {s = "return", tok = new Token(TokenType.Return)},
-            new TokenInfo {s = "print", tok = new Token(TokenType.Print)},
             new TokenInfo {s = "<=", tok = new Token(TokenType.LessEqual)},
             new TokenInfo {s = ">=", tok = new Token(TokenType.GreatEqual)},
             new TokenInfo {s = "==", tok = new Token(TokenType.EqualEqual)},
@@ -124,6 +121,8 @@ namespace Compiler
             new TokenInfo {s = "/", tok = new Token(TokenType.Div)},
             new TokenInfo {s = "(", tok = new Token(TokenType.LParenthesis)},
             new TokenInfo {s = ")", tok = new Token(TokenType.RParenthesis)},
+            new TokenInfo {s = "[", tok = new Token(TokenType.LBracket)},
+            new TokenInfo {s = "]", tok = new Token(TokenType.RBracket)},
             new TokenInfo {s = "{", tok = new Token(TokenType.LBrace)},
             new TokenInfo {s = "}", tok = new Token(TokenType.RBrace)},
             new TokenInfo {s = ">", tok = new Token(TokenType.Great)},
@@ -131,7 +130,6 @@ namespace Compiler
             new TokenInfo {s = "=", tok = new Token(TokenType.Equal)},
             new TokenInfo {s = ";", tok = new Token(TokenType.Semicolon)},
             new TokenInfo {s = ",", tok = new Token(TokenType.Comma)},
-            new TokenInfo {s = "\"", tok = new Token(TokenType.Quote)},
         };
 
 
@@ -220,6 +218,31 @@ namespace Compiler
             return true;
         }
 
+        public static bool IsString(string s, int index, out int i, ref string str)
+        {
+            i = index;
+            if (s[i] != '\"')
+            {
+                return false;
+            }
+
+            i++;
+            while(i < s.Length && s[i] != '\"')
+            {
+                i++;
+            }
+
+            if (i == s.Length)
+            {
+                return false;
+            }
+
+            i++;
+            str = s.Substring(index + 1, i - index - 2);
+
+            return true;
+        }
+
         public static bool Match(string s, int start, string sub)
         {
             if (s.Length < start + sub.Length)
@@ -273,33 +296,20 @@ namespace Compiler
                     cntChar_ = j;
                     break;
                 }
-                //else if (s.Equals("if"))
-                //{
-                //    tok = Token.If;
-                //    cntString_++;
-                //    cntChar_ = 0;
-                //    break;
-                //}
-                //else if (s.Equals("else"))
-                //{
-                //    tok = Token.Else;
-                //    cntString_++;
-                //    cntChar_ = 0;
-                //    break;
-                //}
-                //else if (s.Equals("while"))
-                //{
-                //    tok = Token.While;
-                //    cntString_++;
-                //    cntChar_ = 0;
-                //    break;
-                //}
                 else
                 {
+                    string str = string.Empty;
                     if (IsSymbol(s, cntChar_, out j))
                     {
                         tok = new Token(TokenType.Variable);
                         tok.str = s.Substring(cntChar_, j - cntChar_);
+                        cntChar_ = j;
+                        break;
+                    }
+                    else if (IsString(s, cntChar_, out j, ref str))
+                    {
+                        tok = new Token(TokenType.String);
+                        tok.str = str;
                         cntChar_ = j;
                         break;
                     }
